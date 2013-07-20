@@ -1,12 +1,16 @@
 package com.bandonleon.markthisspot;
 
 import android.app.Dialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -18,14 +22,16 @@ import com.google.android.gms.location.LocationClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
-// import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+// import com.google.android.gms.maps.model.CameraPosition;
 
 public class MainActivity extends FragmentActivity 
 					   implements GooglePlayServicesClient.ConnectionCallbacks,
 						  	 	  GooglePlayServicesClient.OnConnectionFailedListener {
 
+	private static final int ACTIVITY_SETTINGS = 1;
+	
 	private static final String CURR_POS_LAT = "curr_lat";
 	private static final String CURR_POS_LNG = "curr_lng";
 	private static final LatLng US_CENTER = new LatLng(38.5, -99.6);
@@ -36,6 +42,8 @@ public class MainActivity extends FragmentActivity
 								// as this is owned by the view SupportMapFragment and will cause
 								// memory leaks, etc. (so don't hold onto markers, etc).
 	
+	private boolean mAllowOverrideLatLng = false;
+	private int mMapType = 1;
 	
 	// Stores the current instantiation of the location client in this object
     private LocationClient mLocationClient;
@@ -44,6 +52,13 @@ public class MainActivity extends FragmentActivity
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
+		// Load the default preference values if necessary
+		PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+		
+		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+		String mapType = sharedPref.getString(SettingsActivity.KEY_PREF_MAPTYPE, "1");
+		mMapType = Integer.valueOf(mapType);
 		
 		setContentView(R.layout.activity_main);
         mLatLng = (TextView) findViewById(R.id.latlng);
@@ -54,7 +69,7 @@ public class MainActivity extends FragmentActivity
         
 		mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
 		if (mMap != null) {
-			mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+			mMap.setMapType(mMapType); // GoogleMap.MAP_TYPE_HYBRID);
 			mMap.setMyLocationEnabled(true);
 			mMap.moveCamera(CameraUpdateFactory.newLatLng(mCurrPos));
 			
@@ -92,6 +107,46 @@ public class MainActivity extends FragmentActivity
 		return true;
 	}
 
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+			case R.id.menu_markit:
+				Toast.makeText(this, "Mark this spot!", Toast.LENGTH_SHORT).show();
+				return true;
+			
+			case R.id.action_settings:
+				// Toast.makeText(this, "Show Settings", Toast.LENGTH_SHORT).show();
+				Intent settingsIntent = new Intent(this, SettingsActivity.class);
+				startActivityForResult(settingsIntent, ACTIVITY_SETTINGS);
+				return true;
+			
+			default:
+				// do nothing
+		}
+		
+		return super.onOptionsItemSelected(item);
+	}
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        super.onActivityResult(requestCode, resultCode, intent);
+
+        switch (requestCode) {
+        	case ACTIVITY_SETTINGS:
+        		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        		String mapType = sharedPref.getString(SettingsActivity.KEY_PREF_MAPTYPE, "1");
+        		int newMapType = Integer.valueOf(mapType);
+        		if (mMap != null && mMapType != newMapType) {
+        			mMapType = newMapType;
+        			mMap.setMapType(mMapType);
+        		}
+        		break;
+        	
+        	default:
+        		break;
+        }
+    }
+    
 	/*
 	 * Helper method to determine if the device is geo-location enabled
 	 */

@@ -9,19 +9,22 @@
         android:targetSdkVersion="17" />
 
     <permission
-         android:name="com.bandonleon.markthisspot.permission.MAPS_RECEIVE"
-         android:protectionLevel="signature"/>
-	<uses-permission  android:name="com.bandonleon.markthisspot.permission.MAPS_RECEIVE"/>
-	<uses-permission android:name="android.permission.INTERNET"/>
-	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-	<uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES"/>
-	
-	<!-- Maps v2 uses OpenGL -->
-	<uses-feature android:glEsVersion="0x00020000" android:required="true"/>
-		
+        android:name="com.bandonleon.markthisspot.permission.MAPS_RECEIVE"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="com.bandonleon.markthisspot.permission.MAPS_RECEIVE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES" />
+
+    <!-- Maps v2 uses OpenGL -->
+    <uses-feature
+        android:glEsVersion="0x00020000"
+        android:required="true" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
@@ -36,10 +39,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
+
         <meta-data
-			android:name="com.google.android.maps.v2.API_KEY"
-			android:value="AIzaSyDuxdIjU8YREhVY6sXc-2jRBwp4Z9qhq4I" />
+            android:name="com.google.android.maps.v2.API_KEY"
+            android:value="AIzaSyDuxdIjU8YREhVY6sXc-2jRBwp4Z9qhq4I" />
+
+        <activity
+            android:name="com.bandonleon.markthisspot.SettingsActivity"
+            android:label="@string/action_settings" >
+        </activity>
     </application>
 
 </manifest>

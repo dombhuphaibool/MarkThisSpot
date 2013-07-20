@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+	<CheckBoxPreference
+        android:key="pref_latlng_override"
+        android:title="@string/pref_latlng_override"
+        android:summary="@string/pref_latlng_override_summ"
+        android:defaultValue="false" />
+    <ListPreference
+        android:key="pref_maptype"
+        android:title="@string/pref_maptype"
+        android:dialogTitle="@string/pref_maptype"
+        android:entries="@array/pref_maptype_entries"
+        android:entryValues="@array/pref_maptype_values"
+        android:defaultValue="@string/pref_maptype_default" />
+    <Preference android:title="@string/pref_webpage" >
+    	<intent android:action="android.intent.action.VIEW"
+            	android:data="http://maps.google.com" />
+	</Preference>    
+</PreferenceScreen>

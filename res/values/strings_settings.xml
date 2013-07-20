@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pref_latlng_override">Allow override of lat &amp; lng</string>
+    <string name="pref_latlng_override_summ">Allow the user to override the latitude and longitude values</string>
+    <string name="pref_maptype">Map type</string>
+    <string name="pref_maptype_default">Hybrid</string>
+    <string-array name="pref_maptype_entries">
+	    <item>Normal</item>
+	    <item>Satellite</item>
+	    <item>Terrain</item>
+	    <item>Hybrid</item>
+	</string-array>
+    <string-array name="pref_maptype_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+    </string-array>
+    <string name="pref_webpage">Google Maps</string>
+</resources>
