@@ -17,6 +17,9 @@ import android.widget.LinearLayout;
 public class MainActivity extends FragmentActivity implements SpotsFragment.OnSpotListener,
 															  MarkFragment.OnSpotEditListener {
 
+    // Debugging tag for the application
+    public static final String APPTAG = "MarkThisSpot";
+    
 	private static final int ACTIVITY_SETTINGS = 1;
 	private static final int ACTIVITY_MARK = 2;
 

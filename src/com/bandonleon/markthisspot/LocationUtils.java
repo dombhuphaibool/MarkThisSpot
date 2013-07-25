@@ -3,14 +3,11 @@ package com.bandonleon.markthisspot;
 import android.content.Context;
 import android.location.Location;
 
-/**
- * Defines app-wide constants and utilities
- */
+/******************************************************************************
+ * Location related utilities
+ * 
+ *****************************************************************************/
 public final class LocationUtils {
-
-    // Debugging tag for the application
-    public static final String APPTAG = "LocationUtils";
-
     /*
      * Define a request code to send to Google Play services
      * This code is returned in Activity.onActivityResult

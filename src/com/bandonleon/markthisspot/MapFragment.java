@@ -166,7 +166,7 @@ public class MapFragment extends Fragment
         // If Google Play services is available
         if (resultCode == ConnectionResult.SUCCESS) {
             // In debug mode, log the status
-            Log.d(LocationUtils.APPTAG, "Google Play services is available.");
+            Log.d(MainActivity.APPTAG, "Google Play services is available.");
             return true;
         // Google Play services was not available for some reason
         } else {
@@ -265,7 +265,7 @@ public class MapFragment extends Fragment
             // Create a new DialogFragment in which to show the error dialog
             ErrorDialogFragment errorFragment = new ErrorDialogFragment();
             errorFragment.setDialog(errorDialog);
-            errorFragment.show(getFragmentManager(), LocationUtils.APPTAG);
+            errorFragment.show(getFragmentManager(), MainActivity.APPTAG);
         }
     }    
 }
