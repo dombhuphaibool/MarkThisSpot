@@ -3,7 +3,7 @@
     <string name="pref_latlng_override">Allow override of lat &amp; lng</string>
     <string name="pref_latlng_override_summ">Allow the user to override the latitude and longitude values</string>
     <string name="pref_maptype">Map type</string>
-    <string name="pref_maptype_default">Hybrid</string>
+    <string name="pref_maptype_default">1</string>
     <string-array name="pref_maptype_entries">
 	    <item>Normal</item>
 	    <item>Satellite</item>
