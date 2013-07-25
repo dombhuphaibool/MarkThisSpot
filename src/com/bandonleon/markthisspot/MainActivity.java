@@ -24,12 +24,18 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-// import com.google.android.gms.maps.model.CameraPosition;
 
+/******************************************************************************
+ * Application's main activity
+ * 
+ *****************************************************************************/
 public class MainActivity extends FragmentActivity 
 					   implements GooglePlayServicesClient.ConnectionCallbacks,
 						  	 	  GooglePlayServicesClient.OnConnectionFailedListener {
 
+    // Debugging tag for the application
+    public static final String APPTAG = "MarkThisSpot";
+    
 	private static final int ACTIVITY_SETTINGS = 1;
 	
 	private static final String CURR_POS_LAT = "curr_lat";
@@ -69,10 +75,9 @@ public class MainActivity extends FragmentActivity
         
 		mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
 		if (mMap != null) {
-			mMap.setMapType(mMapType); // GoogleMap.MAP_TYPE_HYBRID);
+			mMap.setMapType(mMapType);
 			mMap.setMyLocationEnabled(true);
-			mMap.moveCamera(CameraUpdateFactory.newLatLng(mCurrPos));
-			
+			mMap.moveCamera(CameraUpdateFactory.newLatLng(mCurrPos));			
 		}
 	}
 
@@ -154,13 +159,12 @@ public class MainActivity extends FragmentActivity
         // Check that Google Play services is available
         int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
         
-        // If Google Play services is available
         if (resultCode == ConnectionResult.SUCCESS) {
-            // In debug mode, log the status
-            Log.d(LocationUtils.APPTAG, "Google Play services is available.");
+            // Google Play services is available, log status in debug mode
+            Log.d(APPTAG, "Google Play services is available.");
             return true;
-        // Google Play services was not available for some reason
         } else {
+            // Google Play services was not available for some reason
         	showErrorDialog(resultCode);
             return false;
         }
@@ -181,16 +185,6 @@ public class MainActivity extends FragmentActivity
 						mCurrPos = pos;
 						mMap.addMarker(new MarkerOptions().position(pos).title("Marker"));
 						mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos,14), 2500, null);
-						
-						/*
-						CameraPosition cameraPosition = new CameraPosition.Builder()
-					    .target(pos) 			    // Sets the center of the map to Mountain View
-					    .zoom(17)                   // Sets the zoom
-					    .bearing(90)                // Sets the orientation of the camera to east
-					    .tilt(30)                   // Sets the tilt of the camera to 30 degrees
-					    .build();                   // Creates a CameraPosition from the builder
-						mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
-						*/
 					}
 				} else {
 					Toast.makeText(this, "Please enable Wi-Fi & mobile network location", Toast.LENGTH_SHORT).show();
@@ -256,7 +250,7 @@ public class MainActivity extends FragmentActivity
             // Create a new DialogFragment in which to show the error dialog
             ErrorDialogFragment errorFragment = new ErrorDialogFragment();
             errorFragment.setDialog(errorDialog);
-            errorFragment.show(getSupportFragmentManager(), LocationUtils.APPTAG);
+            errorFragment.show(getSupportFragmentManager(), APPTAG);
         }
     }    
 }

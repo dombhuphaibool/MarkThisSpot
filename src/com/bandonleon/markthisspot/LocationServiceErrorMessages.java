@@ -4,9 +4,10 @@ import com.google.android.gms.common.ConnectionResult;
 import android.content.Context;
 import android.content.res.Resources;
 
-/**
+/******************************************************************************
  * Map error codes to error messages.
- */
+ * 
+ *****************************************************************************/
 public class LocationServiceErrorMessages {
 
     // Don't allow instantiation
@@ -16,8 +17,6 @@ public class LocationServiceErrorMessages {
 
         // Get a handle to resources, to allow the method to retrieve messages.
         Resources mResources = context.getResources();
-
-        // Define a string to contain the error message
         String errorString;
 
         // Decide which error message to get, based on the error code.
@@ -72,7 +71,6 @@ public class LocationServiceErrorMessages {
                 break;
         }
 
-        // Return the error message
         return errorString;
     }
 }

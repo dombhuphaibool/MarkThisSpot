@@ -8,10 +8,18 @@ import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.view.MenuItem;
 
+/******************************************************************************
+ * Activity that controls setting the application's settings (preferences)
+ * 
+ *****************************************************************************/
 public class SettingsActivity extends Activity {
 
 	public static final String KEY_PREF_MAPTYPE = "pref_maptype";
-	
+
+	/**************************************************************************
+	 * Settings fragment
+	 * 
+	 *************************************************************************/
 	public static class SettingsFragment extends PreferenceFragment 
 										 implements OnSharedPreferenceChangeListener {
 		// Store map type strings
@@ -30,20 +38,27 @@ public class SettingsActivity extends Activity {
 		@Override
 		public void onResume() {
 		    super.onResume();
-		    getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+		    getPreferenceScreen().getSharedPreferences()
+		    		.registerOnSharedPreferenceChangeListener(this);
 		}
 
 		@Override
 		public void onPause() {
 		    super.onPause();
-		    getPreferenceScreen().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+		    getPreferenceScreen().getSharedPreferences()
+		    		.unregisterOnSharedPreferenceChangeListener(this);
 		}	
 
+		/*
+		 * Helper method to update the map type string
+		 */
 		private void setMapTypeSummary() {
 			Preference mapTypePref = findPreference(KEY_PREF_MAPTYPE);
-			int mapTypeIdx = Integer.valueOf(getPreferenceScreen().getSharedPreferences().getString(KEY_PREF_MAPTYPE, "1")) - 1;
+			int mapTypeIdx = Integer.valueOf(getPreferenceScreen()
+					.getSharedPreferences().getString(KEY_PREF_MAPTYPE, "1")) - 1;
 			mapTypePref.setSummary(mMapTypeArray[mapTypeIdx]);			
 		}
+		
 		/*
 		 * OnSharedPreferenceChangeListener callback
 		 */
@@ -54,6 +69,10 @@ public class SettingsActivity extends Activity {
 		}
 	}
 	
+	/**************************************************************************
+	 * SettingsActivity methods
+	 * 
+	 *************************************************************************/
 	@Override 
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -71,7 +90,8 @@ public class SettingsActivity extends Activity {
 	public boolean onOptionsItemSelected(MenuItem item) {
 	    switch (item.getItemId()) {
 	    	case android.R.id.home:
-	    		// Don't forget to call setResult() if we started this activity via startActivityForResults()
+	    		// TODO: Don't forget to call setResult() if we started this 
+	    		// activity via startActivityForResults()
 	    		finish();
 	    		return true;
 	    	
