@@ -45,7 +45,9 @@ public class MarkFragment extends Fragment implements OnClickListener {
 	@Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-
+//		if (container == null)
+//			return null;
+		
 		View rootView = inflater.inflate(R.layout.spot_mark, container, false);
 
 		mSpotName = (EditText) rootView.findViewById(R.id.mark_name);

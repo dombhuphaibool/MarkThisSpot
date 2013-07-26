@@ -30,7 +30,7 @@ public class DetailsFragment extends Fragment {
 	@Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-        if (container == null) {
+//        if (container == null) {
             // We have different layouts, and in one of them this
             // fragment's containing frame doesn't exist.  The fragment
             // may still be created from its saved state, but there is
@@ -38,8 +38,8 @@ public class DetailsFragment extends Fragment {
             // won't be displayed.  Note this is not needed -- we could
             // just run the code below, where we would create and return
             // the view hierarchy; it would just never be used.
-            return null;
-        }
+//            return null;
+//        }
 
         mMode = Mode.Display;
 
@@ -52,11 +52,20 @@ public class DetailsFragment extends Fragment {
 
         mMarkFragmentContainer = rootView.findViewById(R.id.spot_edit_container);
         
-		assert(mMarkFragment != null);
+        mMarkFragment = (MarkFragment) getFragmentManager().findFragmentById(R.id.spot_edit);
+        mMapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map_frame);
+  
+        if (mMarkFragment == null) {
+        	mMarkFragment = new MarkFragment();
+//		assert(mMarkFragment != null);
 		addFragment(R.id.spot_edit, mMarkFragment);        	
-        
-        assert(mMapFragment != null);
+        }
+
+        if (mMapFragment == null && false) {
+        	mMapFragment = new MapFragment();
+//        assert(mMapFragment != null);
         addFragment(R.id.map_frame, mMapFragment);
+        }
 
 		return rootView;
     }

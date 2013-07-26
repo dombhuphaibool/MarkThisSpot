@@ -5,5 +5,11 @@
     android:layout_height="match_parent"
     android:orientation="horizontal"
     android:baselineAligned="false" >
+
+    <fragment class="com.bandonleon.markthisspot.SpotsFragment"
+        android:id="@+id/list"
+        android:layout_weight="1"
+        android:layout_width="0dp" 
+        android:layout_height="match_parent" />
     
 </LinearLayout>

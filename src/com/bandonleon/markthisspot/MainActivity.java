@@ -1,11 +1,10 @@
 package com.bandonleon.markthisspot;
 
-import com.bandonleon.markthisspot.DetailsFragment.Mode;
-
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.Menu;
@@ -13,6 +12,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+
+import com.bandonleon.markthisspot.DetailsFragment.Mode;
 
 public class MainActivity extends FragmentActivity implements SpotsFragment.OnSpotListener,
 															  MarkFragment.OnSpotEditListener {
@@ -40,9 +41,12 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
     
     LinearLayout mContainer = null;
     SpotsFragment mSpotsFragment = null;
-    MapFragment mMapFragment = null;
-    MarkFragment mMarkFragment = null;
     DetailsFragment mDetailsFragment = null;
+    LinearLayout mListContainer = null;
+    LinearLayout mDetailsContainer = null;
+    
+//    MapFragment mMapFragment = null;
+//    MarkFragment mMarkFragment = null;
     
 	public MainActivity() {
 		mID++;
@@ -52,20 +56,59 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
-		// setContentView(R.layout.test);
-		setContentView(R.layout.spots_list);
+
 		mContainer = (LinearLayout) findViewById(R.id.fragment_container);
-				
-		if (mSpotsFragment == null) {
-			mSpotsFragment = new SpotsFragment();
+		if (mContainer == null) {
+			setContentView(R.layout.spots_list);
+			mContainer = (LinearLayout) findViewById(R.id.fragment_container);
+		}
+		
+		// If we are changing orientation (Portrait to Landscape & vice versa),
+		// then Android will recreate the fragments for us. Therefore, we must
+		// check here to see if the fragments already exist. If not, then the
+		// activity is launched from scratch, so create the fragments ourselves
+		FragmentManager sfm = getSupportFragmentManager();
+		mSpotsFragment = (SpotsFragment) sfm.findFragmentById(CONTAINER_LIST_ID);
+		mDetailsFragment = (DetailsFragment) sfm.findFragmentById(CONTAINER_DETAILS_ID);
+		mListContainer = (LinearLayout) findViewById(CONTAINER_LIST_ID);
+		mDetailsContainer = (LinearLayout) findViewById(CONTAINER_DETAILS_ID);
+		
+/*		if (mSpotsFragment != null) {
+			if (mListContainer == null) {
+				mListContainer = new LinearLayout(this);
+				mListContainer.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f));
+				mListContainer.setId(CONTAINER_LIST_ID);
+				FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+				ft.replace(CONTAINER_LIST_ID, mSpotsFragment);
+				ft.commit();
+			}
+			assert(mListContainer != null);
+			mContainer.addView(mListContainer);
+		}
+*/		if (mDetailsFragment != null) {
+			if (mDetailsContainer == null) {
+				mDetailsContainer = new LinearLayout(this);
+				mDetailsContainer.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f));
+				mDetailsContainer.setId(CONTAINER_DETAILS_ID);
+				FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+				ft.replace(CONTAINER_DETAILS_ID, mDetailsFragment);
+				ft.commit();
+			}
+			assert(mDetailsContainer != null);
+			mContainer.addView(mDetailsContainer);
+		}
+//		mMapFragment = (MapFragment) sfm.findFragmentById(R.id.map_frame);
+//		mMarkFragment = (MarkFragment) sfm.findFragmentById(R.id.spot_edit);
+		
+//-r		if (mSpotsFragment == null) {
+//-r			mSpotsFragment = new SpotsFragment();
 		/*
 			FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
 			ft.add(R.id.fragment_container, sf);
 			ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
 			ft.commit();
 		*/
-		}
+//-r		}
     	// Check to see if we have a frame in which to embed the details
         // fragment directly in the containing UI.
 //-        View detailsFrame = findViewById(R.id.details);
@@ -80,7 +123,19 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
         if (mDualPane)
         	showDetails(0);
 	}
-
+/*
+	@Override
+	public void onConfigurationChanged(Configuration newConfig) {
+	    super.onConfigurationChanged(newConfig);
+	    
+	    // Checks the orientation of the screen
+	    if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+	        Toast.makeText(this, "landscape", Toast.LENGTH_SHORT).show();
+	    } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT){
+	        Toast.makeText(this, "portrait", Toast.LENGTH_SHORT).show();
+	    }
+	}
+*/	
     private void showDetails(long rowId) {
     	assert(mDualPane);
     	/*
@@ -88,7 +143,7 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
         DetailsFragment details = (DetailsFragment)
                 getFragmentManager().findFragmentById(R.id.details);
 		*/
-		if (mMapFragment == null) {
+/*		if (mMapFragment == null) {
 			mMapFragment = new MapFragment();
 		}
 		assert(mMapFragment != null);
@@ -99,17 +154,18 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	    	mMarkFragment.setOnSpotEditListener(this);
 		}
 		assert(mMarkFragment != null);
-		
+*/		
 		if (mDetailsFragment == null) {
-			Log.w("MainActivity", "Constructing DetailsFragment");
+			// Log.w("MainActivity", "Constructing DetailsFragment");
 			mDetailsFragment = new DetailsFragment();
-			mDetailsFragment.setMapFragment(mMapFragment);
-			mDetailsFragment.setMarkFragment(mMarkFragment);
+//			mDetailsFragment.setMapFragment(mMapFragment);
+//			mDetailsFragment.setMarkFragment(mMarkFragment);
 			
-			LinearLayout listContainer = new LinearLayout(this);
+//			LinearLayout listContainer = new LinearLayout(this);
+/*			mListContainer = new LinearLayout(this);
 			// listContainer.setWeightSum(1.0f);
-			listContainer.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f));
-			listContainer.setId(CONTAINER_LIST_ID);
+			mListContainer.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f));
+			mListContainer.setId(CONTAINER_LIST_ID);
 			
 			{
 				// Execute a transaction, replacing any existing fragment
@@ -121,14 +177,15 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 				ft.commit();
 			}
 			
-			mContainer.addView(listContainer);
-
+			mContainer.addView(mListContainer);
+*/
 //-			if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE)
 			{
-				LinearLayout detailsContainer = new LinearLayout(this);
+//				LinearLayout detailsContainer = new LinearLayout(this);
+				mDetailsContainer = new LinearLayout(this);
 				// detailsContainer.setWeightSum(2.0f);
-				detailsContainer.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f));
-				detailsContainer.setId(CONTAINER_DETAILS_ID);
+				mDetailsContainer.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f));
+				mDetailsContainer.setId(CONTAINER_DETAILS_ID);
 				
 				{ 
 					// Execute a transaction, replacing any existing fragment
@@ -141,7 +198,7 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 					ft.commit();
 				}
 				
-				mContainer.addView(detailsContainer);
+				mContainer.addView(mDetailsContainer);
 				if (getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
 					FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
 					ft.hide(mDetailsFragment);
@@ -151,8 +208,8 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 			}
 		}
 		
-		Log.w("MainActivity", "showDetails() mDetailsFragment is " + (mDetailsFragment != null ? "not null, " : "null, ") + "and mMarkFragment is " + (mMarkFragment != null ? "not null." : "null."));
-		assert(mMarkFragment != null && mDetailsFragment != null);
+//		Log.w("MainActivity", "showDetails() mDetailsFragment is " + (mDetailsFragment != null ? "not null, " : "null, ") + "and mMarkFragment is " + (mMarkFragment != null ? "not null." : "null."));
+//		assert(mMarkFragment != null && mDetailsFragment != null);
     }
     
 	@Override
