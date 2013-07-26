@@ -13,6 +13,18 @@ import android.provider.BaseColumns;
 import android.text.TextUtils;
 import android.util.Log;
 
+/******************************************************************************
+ * 
+ * @author Dom Bhuphaibool
+ *
+ * This class extends the ContentProvider logic, encapsulating the data 
+ * model underneath. The current implementation is to use an SQLite database
+ * to store the data. Access to the data is then exposed via the 
+ * ContentProvider apis. The client can use the ContentResolver apis to talk
+ * with Android who will then connect it to our ContentProvider
+ * (SpotsContentProvider).
+ * 
+ ******************************************************************************/
 public class SpotsContentProvider extends ContentProvider {
 	public static final String AUTHORITY = "com.bandonleon.markthisspot.provider";
 	public static final String SPOTS_PATH = "spots";

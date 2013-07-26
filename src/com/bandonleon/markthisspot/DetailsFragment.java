@@ -102,21 +102,60 @@ public class DetailsFragment extends Fragment {
         // showEdit(false);
     }
     
-	public void setMapFragment(MapFragment mapFragment) { mMapFragment = mapFragment; }
     public MapFragment getMapFragment() { return mMapFragment; }
+    /*
+	public void setMapFragment(MapFragment mapFragment) { mMapFragment = mapFragment; }
 	public void setMarkFragment(MarkFragment markFragment) { mMarkFragment = markFragment; }
+    */
     
-    public void displaySpot(long id) {
+    /*
+     * List fragment's list view index id starts at 1. *** Note that it's 1-based ***
+     * Therefore an id of 0 means that we have a new location item (eg, we are in 
+     * the process of adding a new location). We should then get the current location
+     *  and populate the info accordingly.
+     */
+    public void updateInfo(long id) {
+    	if (id == 0) {
+    		// New location => get current location...
+    		// TODO: need to implement this...
+    		LocationInfo loc = new LocationInfo();
+        	if (mSpotName != null)
+        		mSpotName.setText(loc.getName());
+        	if (mSpotDesc != null)
+        		mSpotDesc.setText(loc.getDesc());
+        	if (mMarkFragment != null)
+        		mMarkFragment.updateInfo(id, loc);
+        	
+    		return;
+    	}
+    	
     	Activity activity = getActivity();
     	if (activity != null) {
-	        Cursor c = activity.getContentResolver().query(Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(id)), 
-					  							  		   SpotsContentProvider.PROJECTION_ALL, "", null, null);
-	        if (c != null) {
-	        	String name = c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_NAME));
+	        Cursor c = activity.getContentResolver().query(
+	        	Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(id)),
+	        	SpotsContentProvider.PROJECTION_ALL, "", null, null);
+	        if (c != null && c.getCount() > 0) {
+	        	c.moveToFirst();
+	        	LocationInfo loc = new LocationInfo();
+	        	loc.setName(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_NAME)));
+	        	loc.setDesc(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_DESC)));
+	        	loc.setType(c.getInt(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_TYPE)));
+	        	loc.setLatLng(c.getFloat(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_LAT)),
+	        		c.getFloat(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_LNG)));
+	        	loc.setColor(c.getInt(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_COLOR)));
+	        	loc.setShow(c.getInt(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_SHOW)));
+	        	
 	        	if (mSpotName != null)
-	        		mSpotName.setText(name);
+	        		mSpotName.setText(loc.getName());
+	        	if (mSpotDesc != null)
+	        		mSpotDesc.setText(loc.getDesc());
+	        	if (mMarkFragment != null)
+	        		mMarkFragment.updateInfo(id, loc);
 	        }
     	}
+    }
+    
+    public void displaySpot(long id) {
     }
     
     public void setMode(Mode mode) {

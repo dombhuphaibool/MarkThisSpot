@@ -22,7 +22,16 @@ import android.view.ViewGroup;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.ListView;
 
-
+/******************************************************************************
+ * 
+ * @author Dom Bhuphaibool
+ *
+ * This is the List fragment. Data is retrieved from a SQLite database via
+ * a Loader and LoadManager. A content provider encapsulates the database
+ * logic (see SpotsContentProvider). We then use a ContentResolver to
+ * access teh ContentProvider.
+ * 
+ ******************************************************************************/
 public class SpotsFragment extends ListFragment implements LoaderCallbacks<Cursor> {
     private static final int DELETE_ID = Menu.FIRST;
 	
@@ -50,6 +59,25 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
 	}
 	OnSpotListener mListener;
 	
+	/*
+	 * Fragment Life cylce is as follows:
+	 * 
+	 * Fragment is added:
+	 *   onAttach()
+	 *   onCreate()
+	 *   onCreateView()		<--------|
+	 *   onActivityCreated()         |
+	 *   onStart()                   |
+	 *   onResume()                  |
+	 *                               |
+	 * - Fragment is active -        |
+	 *                               |
+	 *   onPause()                   |
+	 *   onStop()                    |
+	 *   onDestroyview()	---------|
+	 *   onDestroy()
+	 *   onDetach()
+	 */
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);

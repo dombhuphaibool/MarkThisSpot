@@ -1,7 +1,9 @@
 package com.bandonleon.markthisspot;
 
+import android.content.ContentValues;
 import android.content.Intent;
-import android.content.res.Configuration;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -28,7 +30,7 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	private static final int CONTAINER_DETAILS_ID = 9999;
 	
 	private static int mID = 0;
-	
+
 	// In Portrait orientation, we only show the ListView and in Landscape
 	// orientation, we show the dual pane view. We need to keep track of
 	// the currently selected item in the ListView because if the user is 
@@ -48,6 +50,24 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		Log.w("MainActivity", "Constructor " + mID);
 	}
 
+	/*
+	 * Activity life cycle
+	 * 
+	 *                        - Activity launched -
+	 *                                 v
+	 *         ------------------> onCreate()
+	 *         |                   onStart()  <--------- onRestart()
+	 *         |                   onResume() <-------        ^
+	 *         |                       v             |        |
+	 * - App process killed - - Activity running -   |        |
+	 *         ^                       v             |        |
+	 *         |-----------------  onPause()  --------        |
+	 *         ------------------  onStop()  ------------------
+	 *                             onDestroy()
+	 *                                 v
+	 *                         - Activity shutdown -
+	 *                         
+	 */
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -69,7 +89,7 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		// TODO: Research this topic more when we have time... 
 		//
 		FragmentManager sfm = getSupportFragmentManager();
-		mSpotsFragment = (SpotsFragment) sfm.findFragmentById(CONTAINER_LIST_ID);
+		// mSpotsFragment = (SpotsFragment) sfm.findFragmentById(CONTAINER_LIST_ID);
 		mDetailsFragment = (DetailsFragment) sfm.findFragmentById(CONTAINER_DETAILS_ID);
 		
 /*		if (mSpotsFragment != null) {
@@ -107,6 +127,64 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
         
         if (mDualPane)
         	showDetails(0);
+	}
+	
+	@Override
+	protected void onStart() {
+		super.onStart();
+		
+		// Ensure that the first item (index "1" - *note* that index
+		// for querying is 1-based and *NOT* 0-based) in the List fragment 
+		// is the current position. For now just check if index 1 
+		// exists. The first time the app is installed it will note be.
+		// After which, we'll add logic so that this item cannot be 
+		// deleted.
+		saveLocation(1, LocationInfo.CURR_LOC, false);
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		
+		FragmentManager sfm = getSupportFragmentManager();
+		mSpotsFragment = (SpotsFragment) sfm.findFragmentById(android.R.id.list);		
+	}
+	
+	/*
+	 * Helper method to save the location. First we will check if the location
+	 * ID exists in the database. If so, we update the data. If not, we 
+	 * perform an insert into the database.
+	 */
+	private void saveLocation(long id, LocationInfo loc, boolean updateIfExist) {
+        Cursor c = getContentResolver().query(
+        	Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(id)),
+			SpotsContentProvider.PROJECTION_ALL, "", null, null);
+    		// To search for name="Current location" use the following...
+    		// (SpotsContentProvider.CONTENT_URI, SpotsContentProvider.PROJECTION_ALL,
+    		//  SpotsContentProvider.KEY_NAME + "=?", new String[] {"Current location"}, null);
+        
+        // Not really sure if it's okay if the cursor returned is null.
+        // From experience if a row doesn't exist, a valid cursor is returned,
+        // but the count is 0. 
+        //
+        // TODO: revisit this to make sure what are the ramification if the
+        // cursor returned is null...
+        if (c == null || c.getCount() == 0) {
+        	getContentResolver().insert(SpotsContentProvider.CONTENT_URI, 
+        								loc.getContentValues());
+        } else if (updateIfExist) {
+    		getContentResolver().update(
+        		Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(id)),
+        		loc.getContentValues(), null, null);
+    		/*
+    		if (c.moveToFirst()) {
+	        	int nameColIdx = c.getColumnIndex(SpotsContentProvider.KEY_NAME);
+	        	String name = c.getString(nameColIdx);
+	        	String n = "  " + name;
+        	}
+        	*/
+        }
+		
 	}
 	
 	private enum LoadMode { ADD, REPLACE };
@@ -171,8 +249,12 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 				// Toast.makeText(this, "Mark this spot!", Toast.LENGTH_SHORT).show();
 				// Intent markIntent = new Intent(this, MarkActivity.class);
 				// startActivityForResult(markIntent, ACTIVITY_MARK);
-				if (mDetailsFragment != null)
+				if (mDetailsFragment != null) {
+					long id = (mSpotsFragment == null) ? 0 : mSpotsFragment.getSelectedItemId();
+					id = (id < 1) ? 0 : id;
+					mDetailsFragment.updateInfo(id);
 					mDetailsFragment.setMode(DetailsFragment.Mode.Edit);
+				}
 				return true;
 			
 			case R.id.action_settings:
@@ -211,13 +293,20 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
     /*
      * MarkFragment.OnSpotEditListener callbacks
      */
-	public void onSaveEdit(String name, int type, String desc) {
-		// TODO: Save the edit
+	public void onSaveEdit(long id, LocationInfo loc) {
+		saveLocation(id, loc, true);
+		
+		if (mSpotsFragment != null)
+			mSpotsFragment.reloadListView();
+		
 		if (mDetailsFragment != null)
 			mDetailsFragment.setMode(Mode.Display);
 	}
 
 	public void onCancelEdit() {
+		if (mSpotsFragment != null)
+			mSpotsFragment.reloadListView();
+		
 		if (mDetailsFragment != null)
 			mDetailsFragment.setMode(Mode.Display);
 	}
@@ -228,6 +317,9 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 
 	public int getID() { return mID; }
 	
-	public void onSpotSelected(long id) {}
+	public void onSpotSelected(long id) {
+		if (mDetailsFragment != null)
+			mDetailsFragment.updateInfo(id);
+	}
 	public void onSpotCreate() {}
 }

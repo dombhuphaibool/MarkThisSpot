@@ -23,8 +23,10 @@ public class MarkFragment extends Fragment implements OnClickListener {
 	private EditText mSpotLat;
 	private EditText mSpotLng;
 	
+	private long mListIdxId = 0;
+	
 	public interface OnSpotEditListener {
-		public void onSaveEdit(String name, int type, String desc);
+		public void onSaveEdit(long id, LocationInfo loc);
 		public void onCancelEdit();
 		public void onLatLngOverride(float lat, float lng);
 		public int getID();
@@ -33,8 +35,6 @@ public class MarkFragment extends Fragment implements OnClickListener {
 
 	public void setOnSpotEditListener(OnSpotEditListener listener) {
 		mListener = listener;
-		Log.w("MarkFragment", "setOnSpotEditListener(), listner is" + (mListener != null ? " not " : " ") + "null" );
-		Log.w("MarkFragment", "listener id is " + mListener.getID());
 	}
 	
 	public MarkFragment() {
@@ -65,6 +65,26 @@ public class MarkFragment extends Fragment implements OnClickListener {
 		return rootView;
 	}
 
+	/*
+	 * Public method to update all the info in our fragment
+	 */
+	public void updateInfo(long id, LocationInfo loc) {
+		mListIdxId = id;
+		
+		if (mSpotName != null)
+			mSpotName.setText(loc.getName());
+		if (mSpotDesc != null)
+			mSpotDesc.setText(loc.getDesc());
+		
+		if (mSpotLat != null)
+			mSpotLat.setText(String.valueOf(loc.getLat()));
+		if (mSpotLng != null)
+			mSpotLng.setText(String.valueOf(loc.getLng()));
+	}
+	
+	/*
+	 * Button clicks handling
+	 */
 	private void setOnClickListener(Button btn) {
 		if (btn != null)
 			btn.setOnClickListener(this);
@@ -99,46 +119,36 @@ public class MarkFragment extends Fragment implements OnClickListener {
 	}
 	
 	public void onSaveEditClicked(View view) {
-		// TODO: Figure why mListener becomes null!!! :(
-		Log.w("Mark Fragment", "Save Edit Clicked " + mID);
+		// TODO: Fix this hack!
 		OnSpotEditListener ac = (OnSpotEditListener) getActivity();
 		if (ac != null) {
-			Log.w("Mark Fragment", "Main activity id is " + ac.getID());
 			// TODO: For now hack it
 			mListener = ac;
 		}
 		if (mListener != null) {
-			String name = mSpotName.getText().toString();			
-			String desc = mSpotDesc.getText().toString();
-
-			// TODO: Pick a good replacement for empty name
-			if (name.isEmpty())
-				name = "Default Name";
+			LocationInfo loc = new LocationInfo();
+			loc.setName(mSpotName.getText().toString());
+			loc.setDesc(mSpotDesc.getText().toString());
+			loc.setType(1);
+			// TODO: Only set this if the lat & lng are visible for override
+			loc.setLatLng(Float.parseFloat(mSpotLat.getText().toString()),
+						  Float.parseFloat(mSpotLng.getText().toString()));
+			loc.setColor(1);
+			loc.setShow(1);
 			
-			// TODO: Get type from Spinner and parse into int
-			int type = 1;
-			
-			Log.w("Mark Fragment", "Calling onSaveEdit()");
-			mListener.onSaveEdit(name, type, desc);
-		} else {
-			Log.w("Mark Fragment", "mListener is null :(");
+			mListener.onSaveEdit(mListIdxId, loc);
 		}
 	}
 	
 	public void onCancelEditClicked(View view) {
-		// TODO: Figure why mListener becomes null!!! :(
-		Log.w("Mark Fragment", "Cancel Edit Clicked " + mID);
+		// TODO: Fix this hack!
 		OnSpotEditListener ac = (OnSpotEditListener) getActivity();
 		if (ac != null) {
-			Log.w("Mark Fragment", "Main activity id is " + ac.getID());
 			// TODO: For now hack it
 			mListener = ac;
 		}
 		if (mListener != null) {
-			Log.w("Mark Fragment", "Calling onCancelEdit()");
 			mListener.onCancelEdit();
-		} else {
-			Log.w("Mark Fragment", "mListener is null :(");
 		}
 	}
 }
