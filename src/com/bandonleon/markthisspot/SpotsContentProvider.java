@@ -70,7 +70,7 @@ public class SpotsContentProvider extends ContentProvider {
         "create table " + DATABASE_TABLE + 
         " (" + KEY_ROWID + " integer primary key autoincrement, " +
         	   KEY_NAME + " text not null, " +
-        	   KEY_TYPE + " integer not null, " +
+        	   KEY_TYPE + " text not null, " +
         	   KEY_DESC + " text, " +
         	   KEY_LAT + " real not null, " + 
         	   KEY_LNG + " real not null, " +

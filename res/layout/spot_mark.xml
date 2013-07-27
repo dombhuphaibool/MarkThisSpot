@@ -77,7 +77,7 @@
 	        android:layout_weight="2.5"
 	        android:layout_width="0dp"
 	        android:layout_height="wrap_content"
-	        android:inputType="numberDecimal" />
+	        android:inputType="numberDecimal|numberSigned" />"
 	    <TextView 
 	        android:text="@string/spot_lng"
 	        android:layout_weight="1"
@@ -89,7 +89,7 @@
 	        android:layout_weight="2.5"
 	        android:layout_width="0dp"
 	        android:layout_height="wrap_content"
-	        android:inputType="numberDecimal" />
+	        android:inputType="numberDecimal|numberSigned" />
 	    <Button 
 	        android:id="@+id/check_latlng"
 	        android:layout_weight="1.5"

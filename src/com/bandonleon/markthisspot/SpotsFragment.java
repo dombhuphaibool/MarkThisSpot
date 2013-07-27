@@ -106,7 +106,7 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
         super.onActivityCreated(savedInstanceState);
 
         String[] dataColumns = PROJECTION_SPOTS;
-        int[] viewIDs = { R.id.row };
+        int[] viewIDs = { R.id.row_item1, R.id.row_item2 };
      
         // Initialize the adapter. Note that we pass a 'null' Cursor as the
         // third argument. We will pass the adapter a Cursor only when the

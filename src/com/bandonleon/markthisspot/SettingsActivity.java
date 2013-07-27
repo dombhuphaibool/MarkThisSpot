@@ -14,8 +14,9 @@ import android.view.MenuItem;
  *****************************************************************************/
 public class SettingsActivity extends Activity {
 
+	public static final String KEY_LATLNG_OVERRIDE = "pref_latlng_override";
 	public static final String KEY_PREF_MAPTYPE = "pref_maptype";
-
+	
 	/**************************************************************************
 	 * Settings fragment
 	 * 

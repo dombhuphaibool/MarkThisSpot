@@ -1,5 +1,6 @@
 package com.bandonleon.markthisspot;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -7,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
@@ -24,11 +26,12 @@ public class MarkFragment extends Fragment implements OnClickListener {
 	private EditText mSpotLng;
 	
 	private long mListIdxId = 0;
+	private String[] mTypeList = {};
 	
 	public interface OnSpotEditListener {
 		public void onSaveEdit(long id, LocationInfo loc);
 		public void onCancelEdit();
-		public void onLatLngOverride(float lat, float lng);
+		public void onLatLngCheck(float lat, float lng);
 		public int getID();
 	}
 	private OnSpotEditListener mListener = null;
@@ -65,6 +68,47 @@ public class MarkFragment extends Fragment implements OnClickListener {
 		return rootView;
 	}
 
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+
+        Activity activity = getActivity();
+        // activity should never be null here, but just in case...
+        if (activity != null) {
+			if (mSpotType != null) {
+				ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(activity,
+						R.array.loc_type_values, android.R.layout.simple_spinner_item);
+				adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+				mSpotType.setAdapter(adapter);	
+			}
+			if (mTypeList.length == 0) {
+				mTypeList = activity.getResources().getStringArray(R.array.loc_type_values);
+			}
+        }
+    }
+
+    /*
+     * Helper method to find the list index of the location type.
+     * Return 0 if not found or the appropriate index if found.
+     */
+    private int findTypeIndex(String type) {
+    	int idx = 0;
+    	if (mTypeList.length > 0) {
+    		while (idx<mTypeList.length && !mTypeList[idx].equals(type))
+    			++idx;
+    	}
+    	return(idx >= mTypeList.length ? 0 : idx);
+    }
+    
+    /*
+     * Public method to show/hide the latitude and longitude override
+     */
+    public void showLatLngOverride(boolean show) {
+    	if (mLatLngContainer != null) {
+    		mLatLngContainer.setVisibility(show ? View.VISIBLE : View.GONE);
+    	}
+    }
+    
 	/*
 	 * Public method to update all the info in our fragment
 	 */
@@ -75,7 +119,8 @@ public class MarkFragment extends Fragment implements OnClickListener {
 			mSpotName.setText(loc.getName());
 		if (mSpotDesc != null)
 			mSpotDesc.setText(loc.getDesc());
-		
+		if (mSpotType != null)
+			mSpotType.setSelection(findTypeIndex(loc.getType()));
 		if (mSpotLat != null)
 			mSpotLat.setText(String.valueOf(loc.getLat()));
 		if (mSpotLng != null)
@@ -114,7 +159,7 @@ public class MarkFragment extends Fragment implements OnClickListener {
 				lat = 0.0f;
 				lng = 0.0f;
 			}
-			mListener.onLatLngOverride(lat, lng);
+			mListener.onLatLngCheck(lat, lng);
 		}
 	}
 	
@@ -129,7 +174,7 @@ public class MarkFragment extends Fragment implements OnClickListener {
 			LocationInfo loc = new LocationInfo();
 			loc.setName(mSpotName.getText().toString());
 			loc.setDesc(mSpotDesc.getText().toString());
-			loc.setType(1);
+			loc.setType(mSpotType.getSelectedItem().toString());
 			// TODO: Only set this if the lat & lng are visible for override
 			loc.setLatLng(Float.parseFloat(mSpotLat.getText().toString()),
 						  Float.parseFloat(mSpotLng.getText().toString()));

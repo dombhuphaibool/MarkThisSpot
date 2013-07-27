@@ -175,6 +175,15 @@ public class MapFragment extends Fragment
         }
     }
 	
+    public void animateCamera(float lat, float lng) {
+		if (isServicesConnected() && mLocationClient != null) {
+			if (mLocationClient.isConnected() && mMap != null) {
+				LatLng pos = new LatLng(lat, lng);
+				mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 14), 2500, null);			
+			}
+		}    	
+    }
+    
 	/*
 	 * Button callback method
 	 */

@@ -1,6 +1,5 @@
 package com.bandonleon.markthisspot;
 
-import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -26,7 +25,6 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	private static final int ACTIVITY_SETTINGS = 1;
 	private static final int ACTIVITY_MARK = 2;
 
-	private static final int CONTAINER_LIST_ID = 9998;
 	private static final int CONTAINER_DETAILS_ID = 9999;
 	
 	private static int mID = 0;
@@ -72,6 +70,8 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+		LocationInfo.setDefaultType(getResources().getString(R.string.loc_type_default));
+
 		setContentView(R.layout.spots_list);
 		mContainer = (LinearLayout) findViewById(R.id.fragment_container);
 		
@@ -92,28 +92,13 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		// mSpotsFragment = (SpotsFragment) sfm.findFragmentById(CONTAINER_LIST_ID);
 		mDetailsFragment = (DetailsFragment) sfm.findFragmentById(CONTAINER_DETAILS_ID);
 		
-/*		if (mSpotsFragment != null) {
-			if (mListContainer == null) {
-				mListContainer = new LinearLayout(this);
-				mListContainer.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f));
-				mListContainer.setId(CONTAINER_LIST_ID);
-				FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-				ft.replace(CONTAINER_LIST_ID, mSpotsFragment);
-				ft.commit();
-			}
-			assert(mListContainer != null);
-			mContainer.addView(mListContainer);
-		}
-*/		if (mDetailsFragment != null) {
+		if (mDetailsFragment != null) {
 			loadFragment(LoadMode.REPLACE, CONTAINER_DETAILS_ID, mDetailsFragment, 2.0f);
 		} else {
 			mDetailsFragment = new DetailsFragment();
 			loadFragment(LoadMode.ADD, CONTAINER_DETAILS_ID, mDetailsFragment, 2.0f);
 		}
 		
-//-r		if (mSpotsFragment == null) {
-//-r			mSpotsFragment = new SpotsFragment();
-//-r		}
     	// Check to see if we have a frame in which to embed the details
         // fragment directly in the containing UI.
 //-        View detailsFrame = findViewById(R.id.details);
@@ -140,6 +125,8 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		// After which, we'll add logic so that this item cannot be 
 		// deleted.
 		saveLocation(1, LocationInfo.CURR_LOC, false);
+		if (mDetailsFragment != null)
+			mDetailsFragment.setMode(DetailsFragment.Mode.Display);
 	}
 
 	@Override
@@ -311,8 +298,9 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 			mDetailsFragment.setMode(Mode.Display);
 	}
 
-	public void onLatLngOverride(float lat, float lng) {
-		// TODO: Recenter the map
+	public void onLatLngCheck(float lat, float lng) {
+		if (mDetailsFragment != null)
+			mDetailsFragment.checkLatLng(lat, lng);
 	}
 
 	public int getID() { return mID; }

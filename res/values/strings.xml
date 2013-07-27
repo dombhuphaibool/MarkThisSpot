@@ -27,6 +27,22 @@
     <!-- Latitude, longitude format -->
     <string name="latitude_longitude">%1$.8f, %2$.8f</string>
 
+    <!-- Location type -->
+    <string name="loc_type">Type</string>
+    <string name="loc_type_default">Landmark</string>
+    <string-array name="loc_type_values">
+	    <item>Activity</item>
+	    <item>Attraction</item>
+	    <item>Business</item>
+	    <item>Cafe</item>
+	    <item>Education</item>
+	    <item>Landmark</item>
+	    <item>Night Spot</item>
+	    <item>Restaurant</item>
+	    <item>Residence</item>
+	    <item>Point of Interest</item>
+	</string-array>
+    
     <!-- Messages -->
     <string name="connected">Client connected</string>
     <string name="connection_error_code_unknown">Unknown connection error code:  %1$d</string>

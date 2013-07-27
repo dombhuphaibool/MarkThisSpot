@@ -1,9 +1,11 @@
 package com.bandonleon.markthisspot;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
@@ -125,7 +127,7 @@ public class DetailsFragment extends Fragment {
         		mSpotDesc.setText(loc.getDesc());
         	if (mMarkFragment != null)
         		mMarkFragment.updateInfo(id, loc);
-        	
+        		
     		return;
     	}
     	
@@ -139,7 +141,7 @@ public class DetailsFragment extends Fragment {
 	        	LocationInfo loc = new LocationInfo();
 	        	loc.setName(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_NAME)));
 	        	loc.setDesc(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_DESC)));
-	        	loc.setType(c.getInt(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_TYPE)));
+	        	loc.setType(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_TYPE)));
 	        	loc.setLatLng(c.getFloat(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_LAT)),
 	        		c.getFloat(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_LNG)));
 	        	loc.setColor(c.getInt(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_COLOR)));
@@ -151,19 +153,25 @@ public class DetailsFragment extends Fragment {
 	        		mSpotDesc.setText(loc.getDesc());
 	        	if (mMarkFragment != null)
 	        		mMarkFragment.updateInfo(id, loc);
+	        	if (mMapFragment != null)
+	        		mMapFragment.animateCamera(loc.getLat(), loc.getLng());
 	        }
     	}
     }
     
-    public void displaySpot(long id) {
+    public void checkLatLng(float lat, float lng) {
+    	if (mMapFragment != null)
+    		mMapFragment.animateCamera(lat, lng);
     }
     
     public void setMode(Mode mode) {
 		Log.d("Details Fragment", "setMode(" + mode + "), current mode is " + mMode);
 //-    	if (mode != mMode) {
         	int vis = (mode == Mode.Display) ? View.VISIBLE : View.GONE;
-        	mSpotName.setVisibility(vis);
-        	mSpotDesc.setVisibility(vis);        	
+        	if (mSpotName != null)
+        		mSpotName.setVisibility(vis);
+        	if (mSpotDesc != null)
+        		mSpotDesc.setVisibility(vis);        	
     		showEdit(mode == Mode.Edit);
     		mMode = mode;
 //-    	}
@@ -181,6 +189,14 @@ public class DetailsFragment extends Fragment {
 			ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
 		}
 		ft.commit();
+		
+		Activity activity = getActivity();
+		if (activity != null) {
+			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(activity);
+			boolean override = sharedPref.getBoolean(SettingsActivity.KEY_LATLNG_OVERRIDE, false);
+			mMarkFragment.showLatLngOverride(override);
+		}
+		
 		mMarkFragmentContainer.setVisibility(show ? View.VISIBLE : View.GONE);
     }    
 }
