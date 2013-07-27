@@ -13,22 +13,68 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
-public class DetailsFragment extends Fragment {
+/******************************************************************************
+ * 
+ * @author 		Dom Bhuphaibool
+ * 				dombhuphaibool@yahoo.com
+ * 
+ * Created: 	19 July 2013
+ * Modified:	27 July 2013
+ *
+ * Description: 
+ * The fragment which contains the all of the spot's detail.
+ * In 'VIEW' mode, it shows the name and description with the MapFragment
+ * sandwiched in the middle. In 'EDiT' mode, it shows all the details 
+ * that we can edit. The editable details in implemented as a fragment
+ * called MarkFragment
+ * 
+ *****************************************************************************/
+public class DetailsFragment extends Fragment 
+							 implements MapFragment.OnMapListener {
 
+	private static final String KEY_LIST_IDX_ID = "ListIdxId";
+	private static final String KEY_MODE = "DisplayMode";
 	public enum Mode { Display, Edit };
 	
+	private long mListIdxId = 0;
 	private Mode mMode;
 	private TextView mSpotName;
 	private TextView mSpotDesc;
 	private View mMarkFragmentContainer;
 	private MapFragment mMapFragment = null;
 	private MarkFragment mMarkFragment = null;
-
+	private LocationInfo mLoc = null;
+	
+    public MapFragment getMapFragment() { return mMapFragment; }
 	public DetailsFragment() {
 		Log.w("DetailsFragment", "Constructor");
 	}
 
+	/*
+	 * Fragment Life cylce is as follows:
+	 * 
+	 * - Fragment is added/replaced -
+	 * 
+	 *   onAttach()
+	 *   onCreate()
+	 *   onCreateView()		<--------|
+	 *   onActivityCreated()         |
+	 *   onStart()                   |
+	 *   onResume()                  |
+	 *                               |
+	 * - Fragment is active -        |
+	 *                               |
+	 *   onPause()                   |
+	 *   onStop()                    |
+	 *   onDestroyview()	---------|
+	 *   onDestroy()
+	 *   onDetach()
+	 *   
+	 * - Fragment is Destroyed - 
+	 */
+	
 	@Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
@@ -55,10 +101,14 @@ public class DetailsFragment extends Fragment {
         mSpotDesc.setTextSize(getResources().getDimension(R.dimen.textsize));
 
         mMarkFragmentContainer = rootView.findViewById(R.id.spot_edit_container);
-        
-        mMarkFragment = (MarkFragment) getFragmentManager().findFragmentById(R.id.spot_edit);
-        mMapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map_frame);
-  
+
+        // It's very important the we call getChildFragmentManager() instead
+        // of getFragmentManager(). This is because we are trying to find
+        // nested fragments, and *NOT* siblings fragments. Anytime dealing with
+        // nested fragments, use getChildFragmentManager()! :)
+        mMarkFragment = (MarkFragment) getChildFragmentManager().findFragmentById(R.id.spot_edit);
+        mMapFragment = (MapFragment) getChildFragmentManager().findFragmentById(R.id.map_frame);
+
         if (mMarkFragment == null) {
         	mMarkFragment = new MarkFragment();
         	addFragment(R.id.spot_edit, mMarkFragment);        	
@@ -69,7 +119,52 @@ public class DetailsFragment extends Fragment {
         	addFragment(R.id.map_frame, mMapFragment);
         }
 
+		if (mMapFragment != null)
+			mMapFragment.setMapListener(this);
+
+		if (savedInstanceState != null) {
+			mListIdxId = (Long) savedInstanceState.getSerializable(KEY_LIST_IDX_ID);
+			mMode = (Mode) savedInstanceState.getSerializable(KEY_MODE);
+			if (mLoc == null)
+				mLoc = new LocationInfo();
+			mLoc.loadState(savedInstanceState);			
+			
+			setMode(mMode);
+			updateUI();
+		}
+		
 		return rootView;
+    }
+
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+    }
+    
+	@Override 
+	public void onStart() {
+		super.onStart();
+	}
+	
+	@Override
+	public void onResume() {
+		super.onResume();
+	}
+	
+	// Used to record transient states. eg, when the orientation changes, 
+	// user clicks home button, or user clicks current tasks button. It seems
+	// that onPause() is always called (and in the above scenarios), onSaveInstanceState()
+	// gets called afterwards. Persistent data should be saved in onPause().
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putSerializable(KEY_LIST_IDX_ID, mListIdxId);
+        outState.putSerializable(KEY_MODE, mMode);
+        assert(mLoc != null);
+        if (mLoc == null)
+        	mLoc = new LocationInfo();
+        mLoc.saveState(outState);
     }
 
 	/*
@@ -89,26 +184,19 @@ public class DetailsFragment extends Fragment {
 		}		
 	}
 
-    // Order is:
-    //		onAttach(), onCreate(), *=> onCreateView(), onActivityCreated(), onStart(), onResume()
-    //		- Fragment is Active -
-    //		onPause(), onStop(), onDestroyView() *=>, onDestroy(), onDetach()
-    //		- Fragment is Destroyed - 
-    //
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-
-        // TODO:
-        // showEdit is causing a crash if we rotate the screen from protrait to landscape & vice versa
-        // showEdit(false);
+	/*
+	 * Helper method to update all the UI widgets
+	 */
+    private void updateUI() {
+    	if (mLoc != null) {
+        	if (mSpotName != null)
+        		mSpotName.setText(mLoc.getName());
+        	if (mSpotDesc != null)
+        		mSpotDesc.setText(mLoc.getDesc());
+        	if (mMarkFragment != null)
+        		mMarkFragment.updateInfo(mListIdxId, mLoc);
+    	}
     }
-    
-    public MapFragment getMapFragment() { return mMapFragment; }
-    /*
-	public void setMapFragment(MapFragment mapFragment) { mMapFragment = mapFragment; }
-	public void setMarkFragment(MarkFragment markFragment) { mMarkFragment = markFragment; }
-    */
     
     /*
      * List fragment's list view index id starts at 1. *** Note that it's 1-based ***
@@ -117,17 +205,11 @@ public class DetailsFragment extends Fragment {
      *  and populate the info accordingly.
      */
     public void updateInfo(long id) {
+    	mListIdxId = id;
     	if (id == 0) {
-    		// New location => get current location...
-    		// TODO: need to implement this...
-    		LocationInfo loc = new LocationInfo();
-        	if (mSpotName != null)
-        		mSpotName.setText(loc.getName());
-        	if (mSpotDesc != null)
-        		mSpotDesc.setText(loc.getDesc());
-        	if (mMarkFragment != null)
-        		mMarkFragment.updateInfo(id, loc);
-        		
+    		mLoc = (mMapFragment != null) ? 
+    				mMapFragment.getCurrLocation() : new LocationInfo();
+    		updateUI();
     		return;
     	}
     	
@@ -138,28 +220,24 @@ public class DetailsFragment extends Fragment {
 	        	SpotsContentProvider.PROJECTION_ALL, "", null, null);
 	        if (c != null && c.getCount() > 0) {
 	        	c.moveToFirst();
-	        	LocationInfo loc = new LocationInfo();
-	        	loc.setName(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_NAME)));
-	        	loc.setDesc(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_DESC)));
-	        	loc.setType(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_TYPE)));
-	        	loc.setLatLng(c.getFloat(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_LAT)),
+	        	mLoc = new LocationInfo();
+	        	mLoc.setName(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_NAME)));
+	        	mLoc.setDesc(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_DESC)));
+	        	mLoc.setType(c.getString(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_TYPE)));
+	        	mLoc.setLatLng(c.getFloat(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_LAT)),
 	        		c.getFloat(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_LNG)));
-	        	loc.setColor(c.getInt(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_COLOR)));
-	        	loc.setShow(c.getInt(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_SHOW)));
+	        	mLoc.setColor(c.getInt(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_COLOR)));
+	        	mLoc.setShow(c.getInt(c.getColumnIndexOrThrow(SpotsContentProvider.KEY_SHOW)));
+
+	        	updateUI();
 	        	
-	        	if (mSpotName != null)
-	        		mSpotName.setText(loc.getName());
-	        	if (mSpotDesc != null)
-	        		mSpotDesc.setText(loc.getDesc());
-	        	if (mMarkFragment != null)
-	        		mMarkFragment.updateInfo(id, loc);
 	        	if (mMapFragment != null)
-	        		mMapFragment.animateCamera(loc.getLat(), loc.getLng());
+	        		mMapFragment.animateCamera(mLoc.getLat(), mLoc.getLng());
 	        }
     	}
     }
     
-    public void checkLatLng(float lat, float lng) {
+    public void checkLatLng(double lat, double lng) {
     	if (mMapFragment != null)
     		mMapFragment.animateCamera(lat, lng);
     }
@@ -199,4 +277,52 @@ public class DetailsFragment extends Fragment {
 		
 		mMarkFragmentContainer.setVisibility(show ? View.VISIBLE : View.GONE);
     }    
+    
+    /*
+     * MapFragment.OnMapListener callbacks
+     */
+    public void onMapConnected() {
+		// Ensure that the first item (index "1" - *note* that index
+		// for querying is 1-based and *NOT* 0-based) in the List fragment 
+		// is the current position. For now just check if index 1 
+		// exists. The first time the app is installed it will note be.
+		// After which, we'll add logic so that this item cannot be 
+		// deleted.
+    	if (mMapFragment != null) {
+    		MainActivity activity = (MainActivity) getActivity();
+    		if (activity != null) {
+        		LocationInfo loc = mMapFragment.getCurrLocation();
+        		loc.setName(LocationInfo.CURR_LOC_NAME);
+        		loc.setDesc(LocationInfo.CURR_LOC_DESC);
+        		// Hack - since this method is a callback
+        		// TODO: Find a nicer way to do this...
+        		activity.onSaveEdit(1, loc);    			
+    		}
+    	}
+
+    	// Now that we're connected, get the current location...
+		if (mLoc == null)
+			mLoc = mMapFragment.getCurrLocation();
+
+    	/*
+    	if (mMapFragment != null && mLoc != null)
+    		mMapFragment.animateCamera(mLoc.getLat(), mLoc.getLng());
+    	*/
+    }
+    
+    public void onMapDisconnected() {
+    	
+    }
+    
+    public void onMapClick(double lat, double lng) {
+    	Toast.makeText(getActivity(), "onMapClick", Toast.LENGTH_SHORT).show();
+    }
+    
+    public void onMapLongClick(double lat, double lng) {
+    	Toast.makeText(getActivity(), "onMapLongClick", Toast.LENGTH_SHORT).show();    	
+    }
+    
+    public void onCameraChange(double lat, double lng) {
+    	Toast.makeText(getActivity(), "onCameraChange", Toast.LENGTH_SHORT).show();    	
+    }
 }

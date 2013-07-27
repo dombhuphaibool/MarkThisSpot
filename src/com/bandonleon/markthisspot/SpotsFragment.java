@@ -24,8 +24,13 @@ import android.widget.ListView;
 
 /******************************************************************************
  * 
- * @author Dom Bhuphaibool
- *
+ * @author 		Dom Bhuphaibool
+ * 				dombhuphaibool@yahoo.com
+ * 
+ * Created: 	19 July 2013
+ * Modified:	27 July 2013
+ * 
+ * Description:
  * This is the List fragment. Data is retrieved from a SQLite database via
  * a Loader and LoadManager. A content provider encapsulates the database
  * logic (see SpotsContentProvider). We then use a ContentResolver to
@@ -34,7 +39,8 @@ import android.widget.ListView;
  ******************************************************************************/
 public class SpotsFragment extends ListFragment implements LoaderCallbacks<Cursor> {
     private static final int DELETE_ID = Menu.FIRST;
-	
+    private static final int CANCEL_ID = Menu.FIRST + 1;
+    
 	private static final String[] PROJECTION_SPOTS = new String[] { SpotsContentProvider.KEY_NAME, SpotsContentProvider.KEY_TYPE };
 	
 	// The loader's unique id. Loader ids are specific to the Activity or
@@ -144,6 +150,14 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
     }
 
     @Override
+    public void onResume() {
+    	super.onResume();
+    	
+    	// TODO: This doesn't seem to do anything. Remove??? 
+    	getListView().setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+    }
+    
+    @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
     }
@@ -180,6 +194,7 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
 		super.onCreateContextMenu(menu, v, menuInfo);
 
 		menu.add(Menu.NONE, DELETE_ID, Menu.NONE, R.string.menu_delete);
+		menu.add(Menu.NONE, CANCEL_ID, Menu.NONE, R.string.menu_cancel);
 	}
 
     @Override
@@ -204,7 +219,10 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
     @Override
     public void onListItemClick(ListView l, View v, int position, long id) {
         super.onListItemClick(l, v, position, id);
-
+        
+        // TODO: This doesn't really do anything... Remove?
+        getListView().setItemChecked(position, true);
+        
         // Uri debugUri = Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(id));
         // Log.d("Mark this spot", "onListItemClicked() uri is " + debugUri.toString());
 

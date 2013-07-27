@@ -12,10 +12,22 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.LinearLayout;
 
 import com.bandonleon.markthisspot.DetailsFragment.Mode;
 
+/******************************************************************************
+ * 
+ * @author 		Dom Bhuphaibool
+ * 				dombhuphaibool@yahoo.com
+ * 
+ * Created: 	19 July 2013
+ * Modified:	27 July 2013
+ *
+ * Description: 
+ * Main Activity of the application.
+ ******************************************************************************/
 public class MainActivity extends FragmentActivity implements SpotsFragment.OnSpotListener,
 															  MarkFragment.OnSpotEditListener {
 
@@ -118,13 +130,6 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	protected void onStart() {
 		super.onStart();
 		
-		// Ensure that the first item (index "1" - *note* that index
-		// for querying is 1-based and *NOT* 0-based) in the List fragment 
-		// is the current position. For now just check if index 1 
-		// exists. The first time the app is installed it will note be.
-		// After which, we'll add logic so that this item cannot be 
-		// deleted.
-		saveLocation(1, LocationInfo.CURR_LOC, false);
 		if (mDetailsFragment != null)
 			mDetailsFragment.setMode(DetailsFragment.Mode.Display);
 	}
@@ -237,9 +242,18 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 				// Intent markIntent = new Intent(this, MarkActivity.class);
 				// startActivityForResult(markIntent, ACTIVITY_MARK);
 				if (mDetailsFragment != null) {
-					long id = (mSpotsFragment == null) ? 0 : mSpotsFragment.getSelectedItemId();
-					id = (id < 1) ? 0 : id;
-					mDetailsFragment.updateInfo(id);
+					/*
+					long id = 0;
+					if (mSpotsFragment != null) {
+						id = mSpotsFragment.getSelectedItemId();
+						if (id == AdapterView.INVALID_ROW_ID)
+							id = 0;
+					}
+					*/
+					// For now, always mark the current location...
+					// TODO: We may want to change this and get the current
+					// list selection item id
+					mDetailsFragment.updateInfo(0);
 					mDetailsFragment.setMode(DetailsFragment.Mode.Edit);
 				}
 				return true;
@@ -298,7 +312,7 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 			mDetailsFragment.setMode(Mode.Display);
 	}
 
-	public void onLatLngCheck(float lat, float lng) {
+	public void onLatLngCheck(double lat, double lng) {
 		if (mDetailsFragment != null)
 			mDetailsFragment.checkLatLng(lat, lng);
 	}

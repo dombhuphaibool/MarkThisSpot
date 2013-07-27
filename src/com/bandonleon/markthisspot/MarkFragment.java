@@ -13,6 +13,20 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 
+/******************************************************************************
+ * 
+ * @author 		Dom Bhuphaibool
+ * 				dombhuphaibool@yahoo.com
+ * 
+ * Created: 	19 July 2013
+ * Modified:	27 July 2013
+ *
+ * Description:
+ * MarkFragment is a fragment that implements all editing UI for the
+ * spot's details. It can be shown or hidden depending on whether you
+ * would like to see the details of a spot.
+ * 
+ *****************************************************************************/
 public class MarkFragment extends Fragment implements OnClickListener {
 
 	private static int mID = 0;
@@ -31,7 +45,7 @@ public class MarkFragment extends Fragment implements OnClickListener {
 	public interface OnSpotEditListener {
 		public void onSaveEdit(long id, LocationInfo loc);
 		public void onCancelEdit();
-		public void onLatLngCheck(float lat, float lng);
+		public void onLatLngCheck(double lat, double lng);
 		public int getID();
 	}
 	private OnSpotEditListener mListener = null;
@@ -148,16 +162,25 @@ public class MarkFragment extends Fragment implements OnClickListener {
 	 * Button callbacks
 	 */
 	public void onCheckLatLngClicked(View view) {
+		// TODO: Fix this hack!
+		// We should really route this to MapFragment in DetailsFragment code.
+		// MapFragment is the one who wants to know about this event.
+		OnSpotEditListener ac = (OnSpotEditListener) getActivity();
+		if (ac != null) {
+			// TODO: For now hack it
+			mListener = ac;
+		}
+
 		if (mListener != null) {
-			float lat = 0.0f;
-			float lng = 0.0f;
+			double lat = 0.0;
+			double lng = 0.0;
 			
 			try {
-				lat = Float.parseFloat(mSpotLat.getText().toString());
-				lng = Float.parseFloat(mSpotLng.getText().toString());
+				lat = Double.parseDouble(mSpotLat.getText().toString());
+				lng = Double.parseDouble(mSpotLng.getText().toString());
 			} catch (NumberFormatException ex) {
-				lat = 0.0f;
-				lng = 0.0f;
+				lat = 0.0;
+				lng = 0.0;
 			}
 			mListener.onLatLngCheck(lat, lng);
 		}

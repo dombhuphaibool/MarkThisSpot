@@ -15,8 +15,13 @@ import android.util.Log;
 
 /******************************************************************************
  * 
- * @author Dom Bhuphaibool
+ * @author 		Dom Bhuphaibool
+ * 				dombhuphaibool@yahoo.com
+ * 
+ * Created: 	19 July 2013
+ * Modified:	27 July 2013
  *
+ * Description:
  * This class extends the ContentProvider logic, encapsulating the data 
  * model underneath. The current implementation is to use an SQLite database
  * to store the data. Access to the data is then exposed via the 
@@ -76,8 +81,6 @@ public class SpotsContentProvider extends ContentProvider {
         	   KEY_LNG + " real not null, " +
         	   KEY_COLOR + " integer not null, " + 
         	   KEY_SHOW + " integer not null);";
-
-    // private final Context mCtx;
 
     private static class DatabaseHelper extends SQLiteOpenHelper {
 

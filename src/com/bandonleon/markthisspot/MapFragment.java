@@ -20,53 +20,78 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.location.LocationClient;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+/******************************************************************************
+ * 
+ * @author 		Dom Bhuphaibool
+ * 				dombhuphaibool@yahoo.com
+ * 
+ * Created: 	19 July 2013
+ * Modified:	27 July 2013
+ *
+ * Description: 
+ * Map fragment is the fragment to view and control Google Map v2.0
+ * This fragment encapsulates all Google Map's apis. User of MapFragment 
+ * should implement MapFragment.OnMapListener interface to receive all 
+ * callbacks.
+ * 
+ *****************************************************************************/
 public class MapFragment extends Fragment 					   
 						 implements GooglePlayServicesClient.ConnectionCallbacks,
-						 			GooglePlayServicesClient.OnConnectionFailedListener {
+						 			GooglePlayServicesClient.OnConnectionFailedListener,
+						 			GoogleMap.OnCameraChangeListener {
 
 	private static final String CURR_POS_LAT = "curr_lat";
 	private static final String CURR_POS_LNG = "curr_lng";
-	private static final LatLng US_CENTER = new LatLng(38.5, -99.6);
-	private LatLng mCurrPos = null;
+	private static final String CURR_ZOOM = "curr_zoom";
+	private static final float DEFAULT_ZOOM = 14;
 	
-	//-	private TextView mLatLng;
+	private static final LatLng US_CENTER = new LatLng(38.5, -99.6);
+	private static final float US_ZOOM = 2;
+	
+	private LatLng mCurrPos = null;
+	private float mCurrZoom = -1.0f;
+	
 	private SupportMapFragment mSMapFragment = null;
 	private GoogleMap mMap;		// *** Note: Do not hold on to any objects obtained from GoogleMap
 								// as this is owned by the view SupportMapFragment and will cause
 								// memory leaks, etc. (so don't hold onto markers, etc).
 	
-	private boolean mAllowOverrideLatLng = false;
 	private int mMapType = 1;
 	
 	// Stores the current instantiation of the location client in this object
     private LocationClient mLocationClient;
     private Location mCurrentLocation;
-
     private Activity mActivity;
+	
+	public interface OnMapListener {
+		public void onMapClick(double lat, double lng);
+		public void onMapLongClick(double lat, double lng);
+		public void onCameraChange(double lat, double lng);
+		public void onMapConnected();
+		public void onMapDisconnected();
+	}
+	private OnMapListener mMapListener;
+	// *Note* We cannot pass the OnMapListener via the constructor
+	// because Android reconstruct fragments (per orientation change)
+	// via the default constructor. Therefore, use this method instead.
+	public void setMapListener(OnMapListener listener) {
+		mMapListener = listener;
+	}
 	
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
+
     	// Don't think that there's a need to call super...
-    	// super.onCreateView(inflater, container, savedInstanceState);
-    	
-        if (container == null) {
-            // We have different layouts, and in one of them this
-            // fragment's containing frame doesn't exist.  The fragment
-            // may still be created from its saved state, but there is
-            // no reason to try to create its view hierarchy because it
-            // won't be displayed.  Note this is not needed -- we could
-            // just run the code below, where we would create and return
-            // the view hierarchy; it would just never be used.
-            return null;
-        }
-        
+    	// super.onCreateView(inflater, container, savedInstanceState);    	
 		return inflater.inflate(R.layout.map, container, false);
     }
 
@@ -104,19 +129,25 @@ public class MapFragment extends Fragment
 		String mapType = sharedPref.getString(SettingsActivity.KEY_PREF_MAPTYPE, "1");
 		mMapType = Integer.valueOf(mapType);
 		
-//-        mLatLng = (TextView) findViewById(R.id.latlng);
-		
         mLocationClient = new LocationClient(mActivity, this, this);
         
-        mCurrPos = (savedInstanceState != null) ? new LatLng(savedInstanceState.getDouble(CURR_POS_LAT),
-        													 savedInstanceState.getDouble(CURR_POS_LNG)) : US_CENTER;
-        
+        if (savedInstanceState != null) {
+        	mCurrZoom = (Float) savedInstanceState.getFloat(CURR_ZOOM);
+        	mCurrPos = new LatLng(savedInstanceState.getDouble(CURR_POS_LAT),
+					 			  savedInstanceState.getDouble(CURR_POS_LNG));
+        } else {
+        	if (mCurrZoom < 0.0f)
+        		mCurrZoom = US_ZOOM;
+        	if (mCurrPos == null)
+        		mCurrPos = US_CENTER;
+        }        
     }
     
 	@Override
 	public void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
 
+		outState.putFloat(CURR_ZOOM, mCurrZoom);
 		if (mCurrPos != null) {
 			outState.putDouble(CURR_POS_LAT, mCurrPos.latitude);
 			outState.putDouble(CURR_POS_LNG, mCurrPos.longitude);
@@ -132,10 +163,22 @@ public class MapFragment extends Fragment
 		// mMap = ((SupportMapFragment) ((FragmentActivity) mActivity).getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
         mMap = mSMapFragment.getMap();
 		if (mMap != null) {
+			mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+				@Override
+				public void onMapClick(LatLng loc) {
+					mMapListener.onMapClick(loc.latitude, loc.longitude); 
+				}
+			});
+			mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+				@Override
+				public void onMapLongClick(LatLng loc) {
+					mMapListener.onMapLongClick(loc.latitude, loc.longitude); 
+				}
+			});
+			mMap.setOnCameraChangeListener(this);
 			mMap.setMapType(mMapType);
 			mMap.setMyLocationEnabled(true);
-			mMap.moveCamera(CameraUpdateFactory.newLatLng(mCurrPos));
-			
+			mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mCurrPos, mCurrZoom));
 		}        
     }
 	
@@ -163,36 +206,61 @@ public class MapFragment extends Fragment
         // Check that Google Play services is available
         int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mActivity);
         
-        // If Google Play services is available
         if (resultCode == ConnectionResult.SUCCESS) {
+            // Google Play services is available!!! :)
             // In debug mode, log the status
             Log.d(MainActivity.APPTAG, "Google Play services is available.");
             return true;
-        // Google Play services was not available for some reason
         } else {
+            // Google Play services was not available for some reason
         	showErrorDialog(resultCode);
             return false;
         }
     }
 	
-    public void animateCamera(float lat, float lng) {
+    public void animateCamera(double lat, double lng) {
+    	setCamera(true, lat, lng, DEFAULT_ZOOM);
+    }
+    
+    private void setCamera(boolean animate, double lat, double lng, float zoom) {
 		if (isServicesConnected() && mLocationClient != null) {
 			if (mLocationClient.isConnected() && mMap != null) {
 				LatLng pos = new LatLng(lat, lng);
-				mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 14), 2500, null);			
+				mCurrPos = pos;
+				mCurrZoom = zoom;
+				CameraUpdate cam = CameraUpdateFactory.newLatLngZoom(pos, zoom);
+				if (animate)
+					mMap.animateCamera(cam, 2500, null);
+				else
+					mMap.moveCamera(cam);
 			}
 		}    	
     }
+
+    public LocationInfo getCurrLocation() {
+    	LocationInfo loc = new LocationInfo();
+		if (isServicesConnected() && mLocationClient != null) {
+			if (mLocationClient.isConnected()) {
+				mCurrentLocation = mLocationClient.getLastLocation();
+				if (mCurrentLocation != null) {
+					loc.setLatLng(mCurrentLocation.getLatitude(),
+								  mCurrentLocation.getLongitude());
+				}
+			}
+		}
+    	return loc;
+    }
     
 	/*
-	 * Button callback method
+	 * Button callback method - This method is no longer in use, we should
+	 * delete this soon...
 	 */
 	public void onGetLocationClicked(View view) {
 		if (isServicesConnected() && mLocationClient != null) {
 			if (mLocationClient.isConnected()) {
 				mCurrentLocation = mLocationClient.getLastLocation();
 				if (mCurrentLocation != null) {
-//-					mLatLng.setText(LocationUtils.getLatLng(this, mCurrentLocation));
+					// mLatLng.setText(LocationUtils.getLatLng(this, mCurrentLocation));
 			        
 					if (mMap != null) {
 						LatLng pos = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
@@ -216,17 +284,34 @@ public class MapFragment extends Fragment
 			}
 		}
 	}
-	
+
+	/*
+	 * GoogleMap.OnCameraChangeListener callbacks
+	 */
+	@Override
+	public void onCameraChange(CameraPosition pos) {
+		mCurrPos = pos.target;
+		mCurrZoom = pos.zoom;
+		
+		if (mMapListener != null)
+			mMapListener.onCameraChange(pos.target.latitude, pos.target.longitude);
+	}
+
     /*
      * GooglePlayServicesClient.ConnectionCallbacks
      */
     @Override
     public void onConnected(Bundle bundle) {
+    	setCamera(false, mCurrPos.latitude, mCurrPos.longitude, mCurrZoom);
+    	if (mMapListener != null)
+    		mMapListener.onMapConnected();
     	Toast.makeText(mActivity, "Connected", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onDisconnected() {
+    	if (mMapListener != null)
+    		mMapListener.onMapDisconnected();
     	Toast.makeText(mActivity, "Disconnected. Please re-connect.", Toast.LENGTH_SHORT).show();
     }
 	

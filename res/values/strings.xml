@@ -9,6 +9,7 @@
 	
 	<!-- Context menu items -->
 	<string name="menu_delete">Delete</string>
+	<string name="menu_cancel">Cancel</string>
 	
 	<!-- Mark spot UI -->
 	<string name="spot_name">Name:</string>
@@ -23,6 +24,7 @@
     <string name="latlng">Latitude &amp; Longitude: </string>
     <string name="none"> -- None -- </string>
     <string name="get_location">Get Location</string>
+    <string name="default_loc_name">New Location</string>
     
     <!-- Latitude, longitude format -->
     <string name="latitude_longitude">%1$.8f, %2$.8f</string>

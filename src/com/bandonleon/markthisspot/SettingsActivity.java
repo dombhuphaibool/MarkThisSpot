@@ -9,6 +9,14 @@ import android.preference.PreferenceFragment;
 import android.view.MenuItem;
 
 /******************************************************************************
+ * 
+ * @author 		Dom Bhuphaibool
+ * 				dombhuphaibool@yahoo.com
+ * 
+ * Created: 	19 July 2013
+ * Modified:	27 July 2013
+ *
+ * Description: 
  * Activity that controls setting the application's settings (preferences)
  * 
  *****************************************************************************/
