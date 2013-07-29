@@ -131,7 +131,6 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		super.onStart();
 		
 		if (mDetailsFragment != null) {
-			mDetailsFragment.setMode(DetailsFragment.Mode.Display);
 			MapFragment mf = mDetailsFragment.getMapFragment();
 			if (mf != null)
 				mf.addMapListener(this);
@@ -144,6 +143,14 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		
 		FragmentManager sfm = getSupportFragmentManager();
 		mSpotsFragment = (SpotsFragment) sfm.findFragmentById(android.R.id.list);		
+	}
+	
+	/*
+	 * This method will update the latitude and longitude of the first
+	 * item in the ListView ('Current Location') 
+	 */
+	public void updateCurrentLocation(LocationInfo loc) {
+		saveLocation(1, loc, true);
 	}
 	
 	/*
@@ -316,7 +323,16 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	public void onMapConnected() {}
 	public void onMapDisconnected() {}
 	public void onMapClick(double lat, double lng) {}
-	public void onMapLongClick(double lat, double lng) {}
+
+	public void onMapLongClick(double lat, double lng) {
+		// *** Note ***
+		// No need to invalidate mCurrSelectedId or call 
+		// DetailsFragment.updateInfo(), because the cameraChange
+		// event from calling MapFragment.animateCamera() will 
+		// invalidate mCurrSelectedId and call DetailsFragment.updateInfo()
+		// for us.
+		mShowEditOnCamChange = true;
+	}
 
 	// If we selected a new location in the SpotsFragment (ListView),
 	// the camera will change position to that location. Therefore,
@@ -328,15 +344,51 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	// need to maintain the mCurrSelectedId to be valid after
 	// orientation changes.
 	private boolean mIgnoreCamChange = true;
+	private boolean mShowEditOnCamChange = false;
 	public void onCameraChange(double lat, double lng) {
 		if (!mIgnoreCamChange && mSpotsFragment != null) {
+			// Hide the previous marker info window if it's showing
+			if (mDetailsFragment != null) {
+				MapFragment mapFragment = mDetailsFragment.getMapFragment();
+				if (mapFragment != null)
+					mapFragment.activateMarker(mCurrSelectedId, false);				
+			}
+			
+			// Clear the List fragment's ListView
 			mSpotsFragment.clearCurrListSelection();
 			mCurrSelectedId = 0;
-			
-			if (mDetailsFragment != null && mDetailsFragment.isVisible())
+
+			// Clear the Detail fragment
+			if (mDetailsFragment != null && mDetailsFragment.isVisible()) {
 				mDetailsFragment.updateInfo(mCurrSelectedId);
+				if (mShowEditOnCamChange) {
+					mDetailsFragment.setMode(DetailsFragment.Mode.Edit);
+					mShowEditOnCamChange = false;
+				}
+			}
 		}
 		mIgnoreCamChange = false;
+	}
+	
+	public void onMarkerClick(long id) {
+		// TODO: We need to find a way to also highlight the
+		// the ListFragment's ListView...
+		// *** TODO *** TODO *** TODO ***
+		mCurrSelectedId = id;
+		if (mDetailsFragment != null)
+			mDetailsFragment.updateInfo(mCurrSelectedId);
+		
+		mIgnoreCamChange = true;
+	}
+	
+	public void onInfoWindowClick(long id) {
+		mCurrSelectedId = id;
+		if (mDetailsFragment != null) {
+			mDetailsFragment.updateInfo(mCurrSelectedId);
+			mDetailsFragment.setMode(DetailsFragment.Mode.Edit);
+		}
+		
+		mIgnoreCamChange = true;
 	}
 	
 	/*
@@ -345,8 +397,12 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	public void onSpotSelected(long id) {
 		mCurrSelectedId = id;
 		mIgnoreCamChange = true;
-		if (mDetailsFragment != null)
+		if (mDetailsFragment != null) {
 			mDetailsFragment.updateInfo(mCurrSelectedId);
+			MapFragment mapFragment = mDetailsFragment.getMapFragment();
+			if (mapFragment != null)
+				mapFragment.activateMarker(id, true);
+		}
 	}
 	public void onSpotCreate() {}
 }

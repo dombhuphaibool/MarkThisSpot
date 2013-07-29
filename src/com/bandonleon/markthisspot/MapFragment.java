@@ -1,6 +1,7 @@
 package com.bandonleon.markthisspot;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import android.app.Activity;
 import android.app.Dialog;
@@ -32,6 +33,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 /******************************************************************************
@@ -53,7 +55,10 @@ public class MapFragment extends Fragment
 						 implements LoaderCallbacks<Cursor>,
 						 			GooglePlayServicesClient.ConnectionCallbacks,
 						 			GooglePlayServicesClient.OnConnectionFailedListener,
-						 			GoogleMap.OnCameraChangeListener {
+						 			GoogleMap.OnCameraChangeListener,
+						 			GoogleMap.OnMapLongClickListener,
+						 			GoogleMap.OnMarkerClickListener,
+						 			GoogleMap.OnInfoWindowClickListener {
 
 	// The loader's unique id. Loader ids are specific to the Activity or
 	// Fragment in which they reside.
@@ -81,6 +86,9 @@ public class MapFragment extends Fragment
     private LocationClient mLocationClient;
     private Location mCurrentLocation;
     private Activity mActivity;
+    
+	private HashMap<Long, Marker> mLocIdToMarker = new HashMap<Long, Marker>();
+	private HashMap<String, Long> mMarkerIdToLocId = new HashMap<String, Long>();
 	
 	public interface OnMapListener {
 		public void onMapConnected();
@@ -88,6 +96,8 @@ public class MapFragment extends Fragment
 		public void onMapClick(double lat, double lng);
 		public void onMapLongClick(double lat, double lng);
 		public void onCameraChange(double lat, double lng);
+		public void onMarkerClick(long id);
+		public void onInfoWindowClick(long id);
 	}
 	private ArrayList<OnMapListener> mMapListeners = new ArrayList<OnMapListener>();
 	public void addMapListener(OnMapListener l) {
@@ -186,14 +196,10 @@ public class MapFragment extends Fragment
 						ml.onMapClick(loc.latitude, loc.longitude); 
 				}
 			});
-			mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
-				@Override
-				public void onMapLongClick(LatLng loc) {
-					for (OnMapListener ml : mMapListeners)
-						ml.onMapLongClick(loc.latitude, loc.longitude); 
-				}
-			});
+			mMap.setOnMapLongClickListener(this);
 			mMap.setOnCameraChangeListener(this);
+			mMap.setOnMarkerClickListener(this);
+			mMap.setOnInfoWindowClickListener(this);
 			mMap.setMapType(mMapType);
 			mMap.setMyLocationEnabled(true);
 		}        
@@ -201,6 +207,12 @@ public class MapFragment extends Fragment
 	
 	@Override
     public void onStop() {
+		// Get rid of all GoogleMap's Marker references as 
+		// GoogleMap handles its lifecycle and we do not want
+		// to leak memory since we are disconnecting.
+		mLocIdToMarker.clear();
+		mMarkerIdToLocId.clear();
+		
         // Disconnecting the client invalidates it.
         mLocationClient.disconnect();
         super.onStop();
@@ -254,17 +266,32 @@ public class MapFragment extends Fragment
 		}    	
     }
 
-    public void addMarker(LocationInfo loc) {
+    // Helper method for adding marker. By calling this method
+    // directly, it is assumed that the caller has alredy checked
+    // to see if isServicesConnected(), and that mLocationClient
+    // is valid and mLocationClient.isConnected(), and that
+    // the GoogleMap mMap object is valid
+    private void addMarkerNoCheck(long id, LocationInfo loc) {
+    	String snippet = (id == 1) ? "" : loc.getType() + ":\n\r" + loc.getDesc();
+		Marker marker = mMap.addMarker(new MarkerOptions()
+							.position(new LatLng(loc.getLat(), loc.getLng()))
+							.title(loc.getName())
+							.snippet(snippet));
+    	if (marker != null) {
+    		mLocIdToMarker.put(id, marker);
+    		mMarkerIdToLocId.put(marker.getId(), id);
+    	}
+    }
+    
+    public void addMarker(long id, LocationInfo loc) {
 		if (isServicesConnected() && mLocationClient != null) {
 			if (mLocationClient.isConnected() && mMap != null) {
-				mMap.addMarker(new MarkerOptions()
-					.position(new LatLng(loc.getLat(), loc.getLng()))
-					.title(loc.getName())
-					.snippet(loc.getType() + "\n" + loc.getDesc()));
+				addMarkerNoCheck(id, loc);
 			}
 		}
     }
-    
+
+    /*
     public void addMarkers(ArrayList<LocationInfo> locs) {
 		if (isServicesConnected() && mLocationClient != null) {
 			if (mLocationClient.isConnected() && mMap != null) {
@@ -276,6 +303,25 @@ public class MapFragment extends Fragment
 				}
 			}
 		}
+    }
+	*/
+    
+    public void activateMarker(long id, boolean activate) {
+    	Marker marker = mLocIdToMarker.get(id);
+    	if (marker != null) {
+    		if (activate)
+    			marker.showInfoWindow();
+    		else
+    			marker.hideInfoWindow();
+    	}
+    }
+
+    public void removeMarker(long id) {
+    	Marker marker = mLocIdToMarker.remove(id);
+    	if (marker != null) {
+    		mMarkerIdToLocId.remove(marker.getId());
+    		marker.remove();
+    	}
     }
     
     public LocationInfo getCurrMapLocation() {
@@ -333,7 +379,7 @@ public class MapFragment extends Fragment
 	}
 
 	/*
-	 * GoogleMap.OnCameraChangeListener callbacks
+	 * GoogleMap.OnCameraChangeListener callback
 	 */
 	@Override
 	public void onCameraChange(CameraPosition pos) {
@@ -344,6 +390,41 @@ public class MapFragment extends Fragment
 			ml.onCameraChange(pos.target.latitude, pos.target.longitude);
 	}
 
+	/*
+	 * GoogleMap.OnMapLongClickListener callback
+	 */
+	@Override
+	public void onMapLongClick(LatLng loc) {
+		animateCamera(loc.latitude, loc.longitude);
+		for (OnMapListener ml : mMapListeners)
+			ml.onMapLongClick(loc.latitude, loc.longitude); 
+	}
+
+	/*
+	 * GoogleMap.OnMarkerClickListener callback
+	 */
+	@Override
+	public boolean onMarkerClick(Marker marker) {
+    	// Toast.makeText(mActivity, "Marker Click: " + marker.getId(), Toast.LENGTH_SHORT).show();
+		long id = mMarkerIdToLocId.get(marker.getId());
+		for (OnMapListener ml : mMapListeners)
+			ml.onMarkerClick(id);
+		// return false stating that we are not consuming the event
+		// so that the default behavior can execute.
+		return false;
+	}
+	
+	/*
+	 * GoogleMap.OnInfoWindowClickListener callback
+	 */
+	@Override
+	public void onInfoWindowClick(Marker marker) {
+    	// Toast.makeText(mActivity, "Info Window Click: " + marker.getId(), Toast.LENGTH_SHORT).show();		
+		long id = mMarkerIdToLocId.get(marker.getId());
+		for (OnMapListener ml : mMapListeners)
+			ml.onInfoWindowClick(id);
+	}
+	
     /*
      * GooglePlayServicesClient.ConnectionCallbacks
      */
@@ -446,34 +527,34 @@ public class MapFragment extends Fragment
     	// A switch-case is useful when dealing with multiple Loaders/IDs
         switch (loader.getId()) {
           case LOADER_ID:
-            // The asynchronous load is complete and the data
-            // is now available for use.
-        	assert(cursor != null);
-        	if (cursor != null) {
-        		if (cursor.moveToFirst()) {
-        			int nameColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_NAME);
-        			int descColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_DESC);
-        			int typeColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_TYPE);
-        			int latColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_LAT);
-        			int lngColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_LNG);
-        			ArrayList<LocationInfo> locs = new ArrayList<LocationInfo>();
-        			do {
-        				locs.add(new LocationInfo()
-        					.setName(cursor.getString(nameColIdx))
-        					.setDesc(cursor.getString(descColIdx))
-        					.setType(cursor.getString(typeColIdx))
-        					.setLatLng(cursor.getDouble(latColIdx),
-        							   cursor.getDouble(lngColIdx)));
-        			} while (cursor.moveToNext());
-        			
-        			if (locs.size() > 0)
-        				addMarkers(locs);
-        		}
-        	}
-        	// mAdapter.swapCursor(cursor);
+      		if (isServicesConnected() && mLocationClient != null &&
+      			mLocationClient.isConnected() && mMap != null) {
+      			
+	            // The asynchronous load is complete and the data
+	            // is now available for use.
+	        	assert(cursor != null);
+	        	if (cursor != null) {
+	        		if (cursor.moveToFirst()) {
+	        			int idColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_ROWID);
+	        			int nameColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_NAME);
+	        			int descColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_DESC);
+	        			int typeColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_TYPE);
+	        			int latColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_LAT);
+	        			int lngColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_LNG);
+	        			LocationInfo loc = new LocationInfo();
+	        			do {
+	        				loc.setName(cursor.getString(nameColIdx));
+	        				loc.setDesc(cursor.getString(descColIdx));
+	        				loc.setType(cursor.getString(typeColIdx));
+	        				loc.setLatLng(cursor.getDouble(latColIdx),
+	        							  cursor.getDouble(lngColIdx));
+	        				addMarkerNoCheck(cursor.getLong(idColIdx), loc);
+	        			} while (cursor.moveToNext());        			
+	        		}
+	        	}
+      		}
             break;
         }
-        // The listview now displays the queried data.
     }
     
     public void onLoaderReset(Loader<Cursor> loader) {

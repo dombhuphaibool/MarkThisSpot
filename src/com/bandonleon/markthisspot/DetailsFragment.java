@@ -129,9 +129,9 @@ public class DetailsFragment extends Fragment
 				mLoc = new LocationInfo();
 			mLoc.loadState(savedInstanceState);			
 			
-			setMode(mMode);
 			updateUI();
 		}
+		setMode(mMode);
 		
 		return rootView;
     }
@@ -294,9 +294,7 @@ public class DetailsFragment extends Fragment
         		LocationInfo loc = mMapFragment.getCurrLocation();
         		loc.setName(LocationInfo.CURR_LOC_NAME);
         		loc.setDesc(LocationInfo.CURR_LOC_DESC);
-        		// Hack - since this method is a callback
-        		// TODO: Find a nicer way to do this...
-        		activity.onSaveEdit(1, loc);    			
+        		activity.updateCurrentLocation(loc);    			
     		}
     	}
 
@@ -328,4 +326,7 @@ public class DetailsFragment extends Fragment
     	
     	Toast.makeText(getActivity(), "onCameraChange", Toast.LENGTH_SHORT).show();    	
     }
+    
+    public void onMarkerClick(long id) {}
+    public void onInfoWindowClick(long id) {}
 }
