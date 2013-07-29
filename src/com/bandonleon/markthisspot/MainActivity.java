@@ -8,11 +8,9 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.LinearLayout;
 
 import com.bandonleon.markthisspot.DetailsFragment.Mode;
@@ -29,18 +27,19 @@ import com.bandonleon.markthisspot.DetailsFragment.Mode;
  * Main Activity of the application.
  ******************************************************************************/
 public class MainActivity extends FragmentActivity implements SpotsFragment.OnSpotListener,
-															  MarkFragment.OnSpotEditListener {
+															  MarkFragment.OnSpotEditListener,
+															  MapFragment.OnMapListener {
 
     // Debugging tag for the application
     public static final String APPTAG = "MarkThisSpot";
+    // Id for storing temp data (for orientation change, etc)
+    private static final String CURR_SELID = "curSelId";
     
 	private static final int ACTIVITY_SETTINGS = 1;
 	private static final int ACTIVITY_MARK = 2;
 
 	private static final int CONTAINER_DETAILS_ID = 9999;
 	
-	private static int mID = 0;
-
 	// In Portrait orientation, we only show the ListView and in Landscape
 	// orientation, we show the dual pane view. We need to keep track of
 	// the currently selected item in the ListView because if the user is 
@@ -49,17 +48,12 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	// when onActivityCreated() gets called again (during the creation of
 	// the Landscape orientation).
     boolean mDualPane;
-    long mCurrSelectedId = -1;
+    long mCurrSelectedId = 0;
     
     LinearLayout mContainer = null;
     SpotsFragment mSpotsFragment = null;
     DetailsFragment mDetailsFragment = null;
     
-	public MainActivity() {
-		mID++;
-		Log.w("MainActivity", "Constructor " + mID);
-	}
-
 	/*
 	 * Activity life cycle
 	 * 
@@ -119,19 +113,29 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 
         if (savedInstanceState != null) {
             // Restore last state for checked position.
-            mCurrSelectedId = savedInstanceState.getLong("curSelId", -1);
+            mCurrSelectedId = savedInstanceState.getLong(CURR_SELID, 0);
         }
         
         if (mDualPane)
         	showDetails(0);
 	}
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putLong(CURR_SELID, mCurrSelectedId);
+    }
 	
 	@Override
 	protected void onStart() {
 		super.onStart();
 		
-		if (mDetailsFragment != null)
+		if (mDetailsFragment != null) {
 			mDetailsFragment.setMode(DetailsFragment.Mode.Display);
+			MapFragment mf = mDetailsFragment.getMapFragment();
+			if (mf != null)
+				mf.addMapListener(this);
+		}
 	}
 
 	@Override
@@ -242,18 +246,7 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 				// Intent markIntent = new Intent(this, MarkActivity.class);
 				// startActivityForResult(markIntent, ACTIVITY_MARK);
 				if (mDetailsFragment != null) {
-					/*
-					long id = 0;
-					if (mSpotsFragment != null) {
-						id = mSpotsFragment.getSelectedItemId();
-						if (id == AdapterView.INVALID_ROW_ID)
-							id = 0;
-					}
-					*/
-					// For now, always mark the current location...
-					// TODO: We may want to change this and get the current
-					// list selection item id
-					mDetailsFragment.updateInfo(0);
+					mDetailsFragment.updateInfo(mCurrSelectedId);
 					mDetailsFragment.setMode(DetailsFragment.Mode.Edit);
 				}
 				return true;
@@ -317,11 +310,43 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 			mDetailsFragment.checkLatLng(lat, lng);
 	}
 
-	public int getID() { return mID; }
+	/*
+	 * MapFragment.OnMapListener callbacks
+	 */
+	public void onMapConnected() {}
+	public void onMapDisconnected() {}
+	public void onMapClick(double lat, double lng) {}
+	public void onMapLongClick(double lat, double lng) {}
+
+	// If we selected a new location in the SpotsFragment (ListView),
+	// the camera will change position to that location. Therefore,
+	// ignore the first camera change event, because we do not want
+	// to clear the current list view selection.
+	//
+	// Ignore the first camera change event as it's delivered
+	// from initialization and orientation change, because we 
+	// need to maintain the mCurrSelectedId to be valid after
+	// orientation changes.
+	private boolean mIgnoreCamChange = true;
+	public void onCameraChange(double lat, double lng) {
+		if (!mIgnoreCamChange && mSpotsFragment != null) {
+			mSpotsFragment.clearCurrListSelection();
+			mCurrSelectedId = 0;
+			
+			if (mDetailsFragment != null && mDetailsFragment.isVisible())
+				mDetailsFragment.updateInfo(mCurrSelectedId);
+		}
+		mIgnoreCamChange = false;
+	}
 	
+	/*
+	 * SpotsFragment.OnSpotsListener callbacks
+	 */
 	public void onSpotSelected(long id) {
+		mCurrSelectedId = id;
+		mIgnoreCamChange = true;
 		if (mDetailsFragment != null)
-			mDetailsFragment.updateInfo(id);
+			mDetailsFragment.updateInfo(mCurrSelectedId);
 	}
 	public void onSpotCreate() {}
 }

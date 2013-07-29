@@ -1,15 +1,21 @@
 package com.bandonleon.markthisspot;
 
+import java.util.ArrayList;
+
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.app.LoaderManager.LoaderCallbacks;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -44,17 +50,22 @@ import com.google.android.gms.maps.model.MarkerOptions;
  * 
  *****************************************************************************/
 public class MapFragment extends Fragment 					   
-						 implements GooglePlayServicesClient.ConnectionCallbacks,
+						 implements LoaderCallbacks<Cursor>,
+						 			GooglePlayServicesClient.ConnectionCallbacks,
 						 			GooglePlayServicesClient.OnConnectionFailedListener,
 						 			GoogleMap.OnCameraChangeListener {
 
+	// The loader's unique id. Loader ids are specific to the Activity or
+	// Fragment in which they reside.
+	private static final int LOADER_ID = 2;
+	
 	private static final String CURR_POS_LAT = "curr_lat";
 	private static final String CURR_POS_LNG = "curr_lng";
 	private static final String CURR_ZOOM = "curr_zoom";
 	private static final float DEFAULT_ZOOM = 14;
 	
-	private static final LatLng US_CENTER = new LatLng(38.5, -99.6);
-	private static final float US_ZOOM = 2;
+	// private static final LatLng US_CENTER = new LatLng(38.5, -99.6);
+	private static final float INITIAL_ZOOM = 8;
 	
 	private LatLng mCurrPos = null;
 	private float mCurrZoom = -1.0f;
@@ -72,24 +83,26 @@ public class MapFragment extends Fragment
     private Activity mActivity;
 	
 	public interface OnMapListener {
+		public void onMapConnected();
+		public void onMapDisconnected();
 		public void onMapClick(double lat, double lng);
 		public void onMapLongClick(double lat, double lng);
 		public void onCameraChange(double lat, double lng);
-		public void onMapConnected();
-		public void onMapDisconnected();
 	}
-	private OnMapListener mMapListener;
-	// *Note* We cannot pass the OnMapListener via the constructor
-	// because Android reconstruct fragments (per orientation change)
-	// via the default constructor. Therefore, use this method instead.
-	public void setMapListener(OnMapListener listener) {
-		mMapListener = listener;
+	private ArrayList<OnMapListener> mMapListeners = new ArrayList<OnMapListener>();
+	public void addMapListener(OnMapListener l) {
+		// Check to see if the listener is already registered
+		for (OnMapListener ml : mMapListeners)
+			if (l == ml)
+				return;
+		mMapListeners.add(l);
 	}
+	// *Note* Android reconstruct fragments (per orientation change)
+	// via the default constructor. 
 	
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-
     	// Don't think that there's a need to call super...
     	// super.onCreateView(inflater, container, savedInstanceState);    	
 		return inflater.inflate(R.layout.map, container, false);
@@ -135,12 +148,15 @@ public class MapFragment extends Fragment
         	mCurrZoom = (Float) savedInstanceState.getFloat(CURR_ZOOM);
         	mCurrPos = new LatLng(savedInstanceState.getDouble(CURR_POS_LAT),
 					 			  savedInstanceState.getDouble(CURR_POS_LNG));
-        } else {
+        } 
+        /*
+        else {
         	if (mCurrZoom < 0.0f)
         		mCurrZoom = US_ZOOM;
         	if (mCurrPos == null)
         		mCurrPos = US_CENTER;
         }        
+        */
     }
     
 	@Override
@@ -166,19 +182,20 @@ public class MapFragment extends Fragment
 			mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
 				@Override
 				public void onMapClick(LatLng loc) {
-					mMapListener.onMapClick(loc.latitude, loc.longitude); 
+					for (OnMapListener ml : mMapListeners)
+						ml.onMapClick(loc.latitude, loc.longitude); 
 				}
 			});
 			mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
 				@Override
 				public void onMapLongClick(LatLng loc) {
-					mMapListener.onMapLongClick(loc.latitude, loc.longitude); 
+					for (OnMapListener ml : mMapListeners)
+						ml.onMapLongClick(loc.latitude, loc.longitude); 
 				}
 			});
 			mMap.setOnCameraChangeListener(this);
 			mMap.setMapType(mMapType);
 			mMap.setMyLocationEnabled(true);
-			mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mCurrPos, mCurrZoom));
 		}        
     }
 	
@@ -237,6 +254,36 @@ public class MapFragment extends Fragment
 		}    	
     }
 
+    public void addMarker(LocationInfo loc) {
+		if (isServicesConnected() && mLocationClient != null) {
+			if (mLocationClient.isConnected() && mMap != null) {
+				mMap.addMarker(new MarkerOptions()
+					.position(new LatLng(loc.getLat(), loc.getLng()))
+					.title(loc.getName())
+					.snippet(loc.getType() + "\n" + loc.getDesc()));
+			}
+		}
+    }
+    
+    public void addMarkers(ArrayList<LocationInfo> locs) {
+		if (isServicesConnected() && mLocationClient != null) {
+			if (mLocationClient.isConnected() && mMap != null) {
+				for (LocationInfo loc : locs) {
+					mMap.addMarker(new MarkerOptions()
+						.position(new LatLng(loc.getLat(), loc.getLng()))
+						.title(loc.getName())
+						.snippet(loc.getType() + "\n" + loc.getDesc()));
+				}
+			}
+		}
+    }
+    
+    public LocationInfo getCurrMapLocation() {
+    	LocationInfo loc = new LocationInfo();
+    	loc.setLatLng(mCurrPos.latitude, mCurrPos.longitude);
+    	return loc;
+    }
+
     public LocationInfo getCurrLocation() {
     	LocationInfo loc = new LocationInfo();
 		if (isServicesConnected() && mLocationClient != null) {
@@ -293,8 +340,8 @@ public class MapFragment extends Fragment
 		mCurrPos = pos.target;
 		mCurrZoom = pos.zoom;
 		
-		if (mMapListener != null)
-			mMapListener.onCameraChange(pos.target.latitude, pos.target.longitude);
+		for (OnMapListener ml : mMapListeners)
+			ml.onCameraChange(pos.target.latitude, pos.target.longitude);
 	}
 
     /*
@@ -302,16 +349,34 @@ public class MapFragment extends Fragment
      */
     @Override
     public void onConnected(Bundle bundle) {
+    	// Set initial camera position and zoom factor to the the current
+    	// location
+    	if (mCurrZoom < 0.0f)
+    		mCurrZoom = INITIAL_ZOOM;
+    	if (mCurrPos == null) {
+	    	LocationInfo loc = getCurrLocation();
+	    	mCurrPos = new LatLng(loc.getLat(), loc.getLng());
+    	}
     	setCamera(false, mCurrPos.latitude, mCurrPos.longitude, mCurrZoom);
-    	if (mMapListener != null)
-    		mMapListener.onMapConnected();
+    	
+		// *** Add markers for all locations now that we are connected ***
+        // Initialize the Loader with id '2' and callbacks to us.
+        // If the loader doesn't already exist, one is created. Otherwise,
+        // the already created Loader is reused. In either case, the
+        // LoaderManager will manage the Loader across the Activity/Fragment
+        // lifecycle, will receive any new loads once they have completed,
+        // and will report this new data back to us.
+        getLoaderManager().initLoader(LOADER_ID, null, this);
+        
+		for (OnMapListener ml : mMapListeners)
+    		ml.onMapConnected();
     	Toast.makeText(mActivity, "Connected", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onDisconnected() {
-    	if (mMapListener != null)
-    		mMapListener.onMapDisconnected();
+		for (OnMapListener ml : mMapListeners)
+    		ml.onMapDisconnected();
     	Toast.makeText(mActivity, "Disconnected. Please re-connect.", Toast.LENGTH_SHORT).show();
     }
 	
@@ -361,5 +426,61 @@ public class MapFragment extends Fragment
             errorFragment.setDialog(errorDialog);
             errorFragment.show(getFragmentManager(), MainActivity.APPTAG);
         }
-    }    
+    }
+    
+    /**************************************************************************
+     * Loader callbacks
+     * 
+     * LoaderManager.initLoader() and LoaderManager.restartLoader() will 
+     * eventually cause onCreateLoader() callback to be called to return 
+     * a loader.
+     *************************************************************************/
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+    	CursorLoader loader = new CursorLoader(getActivity(), 
+    			SpotsContentProvider.CONTENT_URI, 
+    			SpotsContentProvider.PROJECTION_ALL, null, null, null);
+    	return loader;
+    }
+    
+    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {    	
+    	// A switch-case is useful when dealing with multiple Loaders/IDs
+        switch (loader.getId()) {
+          case LOADER_ID:
+            // The asynchronous load is complete and the data
+            // is now available for use.
+        	assert(cursor != null);
+        	if (cursor != null) {
+        		if (cursor.moveToFirst()) {
+        			int nameColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_NAME);
+        			int descColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_DESC);
+        			int typeColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_TYPE);
+        			int latColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_LAT);
+        			int lngColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_LNG);
+        			ArrayList<LocationInfo> locs = new ArrayList<LocationInfo>();
+        			do {
+        				locs.add(new LocationInfo()
+        					.setName(cursor.getString(nameColIdx))
+        					.setDesc(cursor.getString(descColIdx))
+        					.setType(cursor.getString(typeColIdx))
+        					.setLatLng(cursor.getDouble(latColIdx),
+        							   cursor.getDouble(lngColIdx)));
+        			} while (cursor.moveToNext());
+        			
+        			if (locs.size() > 0)
+        				addMarkers(locs);
+        		}
+        	}
+        	// mAdapter.swapCursor(cursor);
+            break;
+        }
+        // The listview now displays the queried data.
+    }
+    
+    public void onLoaderReset(Loader<Cursor> loader) {
+    	// For whatever reason, the Loader's data is now unavailable.
+        // Remove any references to the old data by replacing it with
+        // a null Cursor.
+        
+    	// mAdapter.swapCursor(null);
+    }
 }

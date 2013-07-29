@@ -120,7 +120,7 @@ public class DetailsFragment extends Fragment
         }
 
 		if (mMapFragment != null)
-			mMapFragment.setMapListener(this);
+			mMapFragment.addMapListener(this);
 
 		if (savedInstanceState != null) {
 			mListIdxId = (Long) savedInstanceState.getSerializable(KEY_LIST_IDX_ID);
@@ -208,7 +208,7 @@ public class DetailsFragment extends Fragment
     	mListIdxId = id;
     	if (id == 0) {
     		mLoc = (mMapFragment != null) ? 
-    				mMapFragment.getCurrLocation() : new LocationInfo();
+    				mMapFragment.getCurrMapLocation() : new LocationInfo();
     		updateUI();
     		return;
     	}
@@ -323,6 +323,9 @@ public class DetailsFragment extends Fragment
     }
     
     public void onCameraChange(double lat, double lng) {
+    	if (mMarkFragment != null)
+    		mMarkFragment.updateLatLng(lat, lng);
+    	
     	Toast.makeText(getActivity(), "onCameraChange", Toast.LENGTH_SHORT).show();    	
     }
 }

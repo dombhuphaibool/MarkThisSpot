@@ -3,6 +3,7 @@ package com.bandonleon.markthisspot;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.database.Cursor;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
@@ -146,20 +147,40 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
         // Configuration config = getResources().getConfiguration();
         // if (config.orientation == Configuration.ORIENTATION_LANDSCAPE) {}
 
-        registerForContextMenu(getListView());		// For long pressed => delete notes ?    	
+        if (savedInstanceState != null)
+        	mCurrListPos = savedInstanceState.getInt("currListPos", -1);
+        
+        ListView listView = getListView();
+        if (listView != null) {
+	        // For long pressed => delete item
+	        registerForContextMenu(listView);
+	    	// TODO: This doesn't seem to do anything. Remove??? 
+	    	listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+	    	// listView.setSelector(android.R.color.darker_gray);
+        }        
     }
 
     @Override
     public void onResume() {
     	super.onResume();
     	
-    	// TODO: This doesn't seem to do anything. Remove??? 
-    	getListView().setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+    	// TODO: Find a way to highlight the selection after an orientaiton change.
+    	/*
+    	ListView listView = getListView();
+    	if (listView != null && mCurrListPos > -1) {
+    		View v = listView.getChildAt(mCurrListPos);
+    		if (v != null) {
+	    		v.setBackgroundColor(getResources().getColor(HIGHLIGHT_COLOR));
+	        	mCurrListSelection = v;
+    		}
+    	}
+    	*/
     }
     
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+        outState.putInt("currListPos", mCurrListPos);
     }
     
     // ------------------------------------------------------------------------
@@ -212,6 +233,15 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
 		return super.onContextItemSelected(item);
 	}
 
+    private int mCurrListPos = -1;
+    private View mCurrListSelection = null;
+    private static final int HIGHLIGHT_COLOR = android.R.color.holo_blue_light;
+    public void clearCurrListSelection() {
+    	if (mCurrListSelection != null) {
+    		mCurrListSelection.setBackgroundColor(getResources().getColor(android.R.color.transparent));
+    		mCurrListSelection = null;
+    	}
+    }
     // ------------------------------------------------------------------------
     // ListActivity callback 
     // - when a user selects an item in the ListView
@@ -221,7 +251,15 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
         super.onListItemClick(l, v, position, id);
         
         // TODO: This doesn't really do anything... Remove?
-        getListView().setItemChecked(position, true);
+        // getListView().setItemChecked(position, true);
+        // getListView().setSelection(position);
+        // savedColor = ((ColorDrawable) v.getBackground()).getColor();
+        if (v != mCurrListSelection) {
+        	clearCurrListSelection();
+            v.setBackgroundColor(getResources().getColor(HIGHLIGHT_COLOR));
+        	mCurrListSelection = v;
+        }
+        mCurrListPos = position;
         
         // Uri debugUri = Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(id));
         // Log.d("Mark this spot", "onListItemClicked() uri is " + debugUri.toString());
@@ -275,18 +313,20 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
         getLoaderManager().restartLoader(LOADER_ID, null, this);
     }
 
-    // ------------------------------------------------------------------------
-    // Loader callbacks
-    // ------------------------------------------------------------------------
+    
+    /**************************************************************************
+     * Loader callbacks
+     * 
+     * LoaderManager.initLoader() and LoaderManager.restartLoader() will 
+     * eventually cause onCreateLoader() callback to be called to return 
+     * a loader.
+     *************************************************************************/
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
     	CursorLoader loader = new CursorLoader(mActivity, SpotsContentProvider.CONTENT_URI, PROJECTION_SPOTS, null, null, null);
-    	// Log.d("Notepadv1", "Creating loader id: " + id + ", content_uri: " + SpotsContentProvider.CONTENT_URI);
     	return loader;
     }
     
     public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
-    	// Log.d("Notepadv1", "onLoadFinished(), loader id: " + loader.getId() + ", count: " + cursor.getCount());
-    	
     	// A switch-case is useful when dealing with multiple Loaders/IDs
         switch (loader.getId()) {
           case LOADER_ID:
@@ -294,7 +334,6 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
             // is now available for use. Only now can we associate
             // the queried Cursor with the SimpleCursorAdapter.
             mAdapter.swapCursor(cursor);
-            // mNotesCursor = cursor;
             break;
         }
         // The listview now displays the queried data.
@@ -305,6 +344,5 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
         // Remove any references to the old data by replacing it with
         // a null Cursor.
         mAdapter.swapCursor(null);
-        // mNotesCursor = null;
     }
 }

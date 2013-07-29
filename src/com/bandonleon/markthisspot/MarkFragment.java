@@ -46,7 +46,6 @@ public class MarkFragment extends Fragment implements OnClickListener {
 		public void onSaveEdit(long id, LocationInfo loc);
 		public void onCancelEdit();
 		public void onLatLngCheck(double lat, double lng);
-		public int getID();
 	}
 	private OnSpotEditListener mListener = null;
 
@@ -139,6 +138,15 @@ public class MarkFragment extends Fragment implements OnClickListener {
 			mSpotLat.setText(String.valueOf(loc.getLat()));
 		if (mSpotLng != null)
 			mSpotLng.setText(String.valueOf(loc.getLng()));
+	}
+	
+	public void updateLatLng(double lat, double lng) {
+		if (mLatLngContainer.isShown()) {
+			if (mSpotLat != null)
+				mSpotLat.setText(String.valueOf(lat));
+			if (mSpotLng != null)
+				mSpotLng.setText(String.valueOf(lng));
+		}
 	}
 	
 	/*

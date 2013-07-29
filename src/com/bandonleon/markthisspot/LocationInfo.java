@@ -52,12 +52,12 @@ public class LocationInfo {
 		mShow = DEFAULT_SHOW;
 	}
 
-	public void setName(String n) { mName = n; }
-	public void setDesc(String d) { mDesc = d; }
-	public void setType(String t) { mType = t; }
-	public void setLatLng(double lat, double lng) { mLat = lat; mLng = lng; }
-	public void setColor(int c) { mColor = c; }
-	public void setShow(int s) { mShow = s; }
+	public LocationInfo setName(String n) { mName = n; return this; }
+	public LocationInfo setDesc(String d) { mDesc = d; return this; }
+	public LocationInfo setType(String t) { mType = t; return this; }
+	public LocationInfo setLatLng(double lat, double lng) { mLat = lat; mLng = lng; return this; }
+	public LocationInfo setColor(int c) { mColor = c; return this; }
+	public LocationInfo setShow(int s) { mShow = s; return this; }
 	
 	public String getName() { return mName; }
 	public String getDesc() { return mDesc; }
