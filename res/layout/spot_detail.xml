@@ -4,12 +4,14 @@
     android:layout_height="match_parent"
     android:orientation="vertical" >
     
+    <!--
 	<TextView 
 	    android:id="@+id/spot_name"
 	    android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
 	    android:text="@string/spot_name" />
-	
+	-->
+		
 	<FrameLayout
 	    android:id="@+id/spot_edit_container"
 	    android:layout_width="fill_parent"
@@ -25,11 +27,12 @@
 	    android:layout_weight="1"
         android:layout_width="fill_parent"
         android:layout_height="0dp" />	
-            
+    
+	<!--
 	<TextView 
 	    android:id="@+id/spot_desc"
 	    android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
 	    android:text="@string/spot_desc" />
-	
+	-->	
 </LinearLayout>

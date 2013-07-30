@@ -40,8 +40,8 @@ public class DetailsFragment extends Fragment
 	
 	private long mListIdxId = 0;
 	private Mode mMode;
-	private TextView mSpotName;
-	private TextView mSpotDesc;
+	// private TextView mSpotName;
+	// private TextView mSpotDesc;
 	private View mMarkFragmentContainer;
 	private MapFragment mMapFragment = null;
 	private MarkFragment mMarkFragment = null;
@@ -95,11 +95,13 @@ public class DetailsFragment extends Fragment
 
         View rootView = inflater.inflate(R.layout.spot_detail, container, false);
         
+        /*
         mSpotName = (TextView) rootView.findViewById(R.id.spot_name);
         mSpotDesc = (TextView) rootView.findViewById(R.id.spot_desc);        
         mSpotName.setTextSize(getResources().getDimension(R.dimen.textsize));
         mSpotDesc.setTextSize(getResources().getDimension(R.dimen.textsize));
-
+		*/
+        
         mMarkFragmentContainer = rootView.findViewById(R.id.spot_edit_container);
 
         // It's very important the we call getChildFragmentManager() instead
@@ -189,10 +191,17 @@ public class DetailsFragment extends Fragment
 	 */
     private void updateUI() {
     	if (mLoc != null) {
+    		/*
         	if (mSpotName != null)
         		mSpotName.setText(mLoc.getName());
         	if (mSpotDesc != null)
         		mSpotDesc.setText(mLoc.getDesc());
+        	*/
+    		// TODO: We may want to optimize this by only updating the 
+    		// MarkerFragment if it is visible. To do this we must ensure
+    		// that all calls to updateInfo() in MainActivity is made
+    		// *AFTER* a call to setMode(EDIT). Currently, it's made before
+    		// so we need to change & clean that up...
         	if (mMarkFragment != null)
         		mMarkFragment.updateInfo(mListIdxId, mLoc);
     	}
@@ -205,14 +214,21 @@ public class DetailsFragment extends Fragment
      *  and populate the info accordingly.
      */
     public void updateInfo(long id) {
-    	mListIdxId = id;
     	if (id == 0) {
-    		mLoc = (mMapFragment != null) ? 
-    				mMapFragment.getCurrMapLocation() : new LocationInfo();
-    		updateUI();
+    		// Only clear the UI info if it was previously populated by a 
+    		// valid location. If we are currently in new location context
+    		// mListIdxId == 0, don't repopulate the UI. Use case is when 
+    		// the user is moving the map around to find the new location point.
+    		if (id != mListIdxId) {
+    			mListIdxId = id;
+	    		mLoc = (mMapFragment != null) ? 
+	    				mMapFragment.getCurrMapLocation() : new LocationInfo();
+	    		updateUI();
+    		}
     		return;
     	}
     	
+    	mListIdxId = id;
     	Activity activity = getActivity();
     	if (activity != null) {
 	        Cursor c = activity.getContentResolver().query(
@@ -241,15 +257,17 @@ public class DetailsFragment extends Fragment
     	if (mMapFragment != null)
     		mMapFragment.animateCamera(lat, lng);
     }
-    
+
+    public Mode getMode() { return mMode; }
     public void setMode(Mode mode) {
-		Log.d("Details Fragment", "setMode(" + mode + "), current mode is " + mMode);
 //-    	if (mode != mMode) {
+			/*
         	int vis = (mode == Mode.Display) ? View.VISIBLE : View.GONE;
         	if (mSpotName != null)
         		mSpotName.setVisibility(vis);
         	if (mSpotDesc != null)
         		mSpotDesc.setVisibility(vis);        	
+        	*/
     		showEdit(mode == Mode.Edit);
     		mMode = mode;
 //-    	}

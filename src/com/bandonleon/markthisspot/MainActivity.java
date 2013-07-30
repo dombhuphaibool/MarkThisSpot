@@ -1,6 +1,7 @@
 package com.bandonleon.markthisspot;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -34,11 +35,14 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
     public static final String APPTAG = "MarkThisSpot";
     // Id for storing temp data (for orientation change, etc)
     private static final String CURR_SELID = "curSelId";
+    private static final String LAST_SP_MODE = "lastSinglePaneMode";
     
 	private static final int ACTIVITY_SETTINGS = 1;
 	private static final int ACTIVITY_MARK = 2;
 
 	private static final int CONTAINER_DETAILS_ID = 9999;
+	
+	private enum ViewMode { DualPane, List, Details }
 	
 	// In Portrait orientation, we only show the ListView and in Landscape
 	// orientation, we show the dual pane view. We need to keep track of
@@ -47,7 +51,8 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	// Landscape, we need to display the currently selected item's details
 	// when onActivityCreated() gets called again (during the creation of
 	// the Landscape orientation).
-    boolean mDualPane;
+    ViewMode mViewMode;
+    ViewMode mLastSinglePaneMode;
     long mCurrSelectedId = 0;
     
     LinearLayout mContainer = null;
@@ -105,25 +110,28 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 			loadFragment(LoadMode.ADD, CONTAINER_DETAILS_ID, mDetailsFragment, 2.0f);
 		}
 		
-    	// Check to see if we have a frame in which to embed the details
-        // fragment directly in the containing UI.
-//-        View detailsFrame = findViewById(R.id.details);
-//-        mDualPane = (detailsFrame != null) && (detailsFrame.getVisibility() == View.VISIBLE);
-		mDualPane = true;
+		mViewMode = (getResources().getConfiguration().orientation == 
+					 Configuration.ORIENTATION_LANDSCAPE) ? ViewMode.DualPane
+													 	  : ViewMode.List;
 
         if (savedInstanceState != null) {
             // Restore last state for checked position.
             mCurrSelectedId = savedInstanceState.getLong(CURR_SELID, 0);
+            mLastSinglePaneMode = (ViewMode) savedInstanceState.getSerializable(LAST_SP_MODE);
+            // If we are in single pane mode, restore to the last single pane mode
+            if (mViewMode != ViewMode.DualPane)
+            	mViewMode = mLastSinglePaneMode;
+        } else {
+        	mLastSinglePaneMode = ViewMode.List;
         }
-        
-        if (mDualPane)
-        	showDetails(0);
 	}
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putLong(CURR_SELID, mCurrSelectedId);
+        outState.putSerializable(LAST_SP_MODE, 
+        	(mViewMode == ViewMode.DualPane) ? mLastSinglePaneMode : mViewMode);
     }
 	
 	@Override
@@ -142,7 +150,48 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		super.onResume();
 		
 		FragmentManager sfm = getSupportFragmentManager();
-		mSpotsFragment = (SpotsFragment) sfm.findFragmentById(android.R.id.list);		
+		mSpotsFragment = (SpotsFragment) sfm.findFragmentById(android.R.id.list);
+
+		setSinglePaneMode(mViewMode);
+	}
+	
+	private void setSinglePaneMode(ViewMode mode) {
+		switch (mode) {
+			case DualPane:
+				
+			break;
+			
+			case List:
+			{
+				// This is the << on the top-left of the action bar
+				getActionBar().setDisplayHomeAsUpEnabled(false);
+				getActionBar().setHomeButtonEnabled(false);
+				
+				mSpotsFragment.getView().setLayoutParams(new LinearLayout.LayoutParams(
+											ViewGroup.LayoutParams.MATCH_PARENT, 
+											ViewGroup.LayoutParams.MATCH_PARENT, 1.0f));
+				FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+				ft.show(mSpotsFragment);
+				ft.hide(mDetailsFragment);
+				ft.commit();
+				mViewMode = ViewMode.List;
+			}
+			break;
+			
+			case Details:
+			{
+				// This is the << on the top-left of the action bar
+				getActionBar().setDisplayHomeAsUpEnabled(true);
+				getActionBar().setHomeButtonEnabled(true);
+				
+				FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+				ft.hide(mSpotsFragment);
+				ft.show(mDetailsFragment);
+				ft.commit();
+				mViewMode = ViewMode.Details;
+			}
+			break;
+		}
 	}
 	
 	/*
@@ -219,23 +268,33 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	        Toast.makeText(this, "portrait", Toast.LENGTH_SHORT).show();
 	    }
 	}
-*/	
-    private void showDetails(long rowId) {
-    	assert(mDualPane);
-    	/*
-        // Check what fragment is currently shown, replace if needed.
-        DetailsFragment details = (DetailsFragment)
-                getFragmentManager().findFragmentById(R.id.details);
-		*/
-
-    	/*
-		if (getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
-			FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-			ft.hide(mDetailsFragment);
-			ft.commit();
-			mContainer.setVisibility(View.GONE);
+*/
+	private void setDetailsFragmentMode(Mode mode) {
+		if (mViewMode == ViewMode.DualPane) {
+			boolean enabled = (mode == Mode.Edit);
+			getActionBar().setDisplayHomeAsUpEnabled(enabled);
+			getActionBar().setHomeButtonEnabled(enabled);
 		}
-		*/
+		
+		if (mDetailsFragment != null)
+			mDetailsFragment.setMode(mode);
+	}
+	
+	@Override
+    public void onBackPressed() {
+    	if (mDetailsFragment != null) {
+    		if (mDetailsFragment.getMode() == Mode.Edit) {
+    			setDetailsFragmentMode(Mode.Display);
+    			return;
+    		}
+    	}
+    	
+		if (mViewMode == ViewMode.Details) {
+			setSinglePaneMode(ViewMode.List);
+			return;
+		}
+		
+    	super.onBackPressed();
     }
     
 	@Override
@@ -248,13 +307,23 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
+			case android.R.id.home:
+				// *** Note that we assume that in ViewMode.List, the
+				// home icon (eg, the << icon on the top-left of the 
+				// action bar) is never visible. And in DualPane mode,
+				// the home icon is only visible if we are in EDIT mode
+				// in the DetailsFragment. By this logic, just simulate
+				// as if the user presses the back button. (same logic).
+				onBackPressed();
+				return true;
+				
 			case R.id.menu_markit:
 				// Toast.makeText(this, "Mark this spot!", Toast.LENGTH_SHORT).show();
 				// Intent markIntent = new Intent(this, MarkActivity.class);
 				// startActivityForResult(markIntent, ACTIVITY_MARK);
 				if (mDetailsFragment != null) {
 					mDetailsFragment.updateInfo(mCurrSelectedId);
-					mDetailsFragment.setMode(DetailsFragment.Mode.Edit);
+					setDetailsFragmentMode(DetailsFragment.Mode.Edit);
 				}
 				return true;
 			
@@ -300,16 +369,16 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		if (mSpotsFragment != null)
 			mSpotsFragment.reloadListView();
 		
-		if (mDetailsFragment != null)
-			mDetailsFragment.setMode(Mode.Display);
+		setDetailsFragmentMode(Mode.Display);
 	}
 
 	public void onCancelEdit() {
+		/*
 		if (mSpotsFragment != null)
 			mSpotsFragment.reloadListView();
+		*/
 		
-		if (mDetailsFragment != null)
-			mDetailsFragment.setMode(Mode.Display);
+		setDetailsFragmentMode(Mode.Display);
 	}
 
 	public void onLatLngCheck(double lat, double lng) {
@@ -361,8 +430,11 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 			// Clear the Detail fragment
 			if (mDetailsFragment != null && mDetailsFragment.isVisible()) {
 				mDetailsFragment.updateInfo(mCurrSelectedId);
+				// When the user performs a long click on the map, we need
+				// to put the DetailFragment into EDIT mode after the
+				// camera change event.
 				if (mShowEditOnCamChange) {
-					mDetailsFragment.setMode(DetailsFragment.Mode.Edit);
+					setDetailsFragmentMode(Mode.Edit);
 					mShowEditOnCamChange = false;
 				}
 			}
@@ -385,7 +457,7 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		mCurrSelectedId = id;
 		if (mDetailsFragment != null) {
 			mDetailsFragment.updateInfo(mCurrSelectedId);
-			mDetailsFragment.setMode(DetailsFragment.Mode.Edit);
+			setDetailsFragmentMode(Mode.Edit);
 		}
 		
 		mIgnoreCamChange = true;
@@ -397,6 +469,10 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	public void onSpotSelected(long id) {
 		mCurrSelectedId = id;
 		mIgnoreCamChange = true;
+		
+		if (mViewMode == ViewMode.List)
+			setSinglePaneMode(ViewMode.Details);
+
 		if (mDetailsFragment != null) {
 			mDetailsFragment.updateInfo(mCurrSelectedId);
 			MapFragment mapFragment = mDetailsFragment.getMapFragment();

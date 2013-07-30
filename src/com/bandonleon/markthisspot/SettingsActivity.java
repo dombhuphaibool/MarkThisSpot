@@ -86,7 +86,7 @@ public class SettingsActivity extends Activity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
-		// getActionBar().setHomeButtonEnabled(true);
+		// This is the << on the top-left of the action bar
 		getActionBar().setDisplayHomeAsUpEnabled(true);
 		
 		// Display fragment as the main content
