@@ -22,6 +22,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.ListView;
+import android.widget.Toast;
 
 /******************************************************************************
  * 
@@ -63,6 +64,7 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
 	public interface OnSpotListener {
 		public void onSpotSelected(long id);
 		public void onSpotCreate();
+		public void onSpotDeleted(long id);
 	}
 	OnSpotListener mListener;
 	
@@ -195,14 +197,7 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-//-    	switch (item.getItemId()) {
-//-    		case CREATE_ID:
-    			// createNote();
-//-    			mListener.onSpotCreate();
-//-    			return true;
-//-    	}
-    	
+    public boolean onOptionsItemSelected(MenuItem item) {    	
         return super.onOptionsItemSelected(item);
     }
     
@@ -223,8 +218,16 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
     	switch (item.getItemId()) {
     		case DELETE_ID:
     			AdapterContextMenuInfo info = (AdapterContextMenuInfo) item.getMenuInfo();
-    			mContentResolver.delete(Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(info.id)), "", null);
-    			reloadListView();
+    			if (info.id > 1) {
+	    			mContentResolver.delete(Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(info.id)), "", null);
+	    			reloadListView();
+	    	        if (mListener != null)
+	    	        	mListener.onSpotDeleted(info.id);
+    			} else {
+    				// TODO: Find a way to disable long click to delete on 
+    				// 'Current Location' as it would be a much cleaner approach.
+    		    	Toast.makeText(getActivity(), R.string.cannot_del_curr_loc, Toast.LENGTH_SHORT).show();
+    			}
     			return true;
     			
     		default:
@@ -260,11 +263,9 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
         	mCurrListSelection = v;
         }
         mCurrListPos = position;
-        
-        // Uri debugUri = Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(id));
-        // Log.d("Mark this spot", "onListItemClicked() uri is " + debugUri.toString());
 
-    	mListener.onSpotSelected(id);
+        if (mListener != null)
+        	mListener.onSpotSelected(id);
         
         /*
         Intent intent = new Intent(this, NoteEdit.class);

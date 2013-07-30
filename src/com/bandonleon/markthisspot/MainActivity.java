@@ -13,6 +13,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import com.bandonleon.markthisspot.DetailsFragment.Mode;
 
@@ -205,9 +206,13 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	/*
 	 * Helper method to save the location. First we will check if the location
 	 * ID exists in the database. If so, we update the data. If not, we 
-	 * perform an insert into the database.
+	 * perform an insert into the database. 
+	 * 
+	 * A return of 0 indicated that neither update nor insert was performed.
+	 * A return of id > 0 means that a successful update or insert was performed.
 	 */
-	private void saveLocation(long id, LocationInfo loc, boolean updateIfExist) {
+	private long saveLocation(long id, LocationInfo loc, boolean updateIfExist) {
+		long savedId = 0;
         Cursor c = getContentResolver().query(
         	Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(id)),
 			SpotsContentProvider.PROJECTION_ALL, "", null, null);
@@ -222,12 +227,19 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
         // TODO: revisit this to make sure what are the ramification if the
         // cursor returned is null...
         if (c == null || c.getCount() == 0) {
-        	getContentResolver().insert(SpotsContentProvider.CONTENT_URI, 
-        								loc.getContentValues());
+        	Uri newUri = getContentResolver().insert(SpotsContentProvider.CONTENT_URI, 
+        											 loc.getContentValues());
+        	try {
+        		savedId = Long.parseLong(newUri.getLastPathSegment());
+        	} catch (NumberFormatException ex) {
+        		savedId = 0;
+        	}
         } else if (updateIfExist) {
-    		getContentResolver().update(
+    		int rowsUpdated = getContentResolver().update(
         		Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(id)),
         		loc.getContentValues(), null, null);
+    		if (rowsUpdated > 0)
+    			savedId = id;
     		/*
     		if (c.moveToFirst()) {
 	        	int nameColIdx = c.getColumnIndex(SpotsContentProvider.KEY_NAME);
@@ -236,7 +248,7 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
         	}
         	*/
         }
-		
+        return savedId;
 	}
 	
 	private enum LoadMode { ADD, REPLACE };
@@ -270,12 +282,14 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	}
 */
 	private void setDetailsFragmentMode(Mode mode) {
+		// Enable/Disbale the home icon in the action bar
 		if (mViewMode == ViewMode.DualPane) {
 			boolean enabled = (mode == Mode.Edit);
 			getActionBar().setDisplayHomeAsUpEnabled(enabled);
 			getActionBar().setHomeButtonEnabled(enabled);
 		}
-		
+				
+		// Show the MarkerFragment within the DetailsFragment
 		if (mDetailsFragment != null)
 			mDetailsFragment.setMode(mode);
 	}
@@ -285,6 +299,11 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
     	if (mDetailsFragment != null) {
     		if (mDetailsFragment.getMode() == Mode.Edit) {
     			setDetailsFragmentMode(Mode.Display);
+    			
+    			// Remove tmp marker if there was one
+    			MapFragment mapFragment = mDetailsFragment.getMapFragment();
+    			if (mapFragment != null)
+    				mapFragment.removeTmpMarker();
     			return;
     		}
     	}
@@ -323,7 +342,14 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 				// startActivityForResult(markIntent, ACTIVITY_MARK);
 				if (mDetailsFragment != null) {
 					mDetailsFragment.updateInfo(mCurrSelectedId);
-					setDetailsFragmentMode(DetailsFragment.Mode.Edit);
+					setDetailsFragmentMode(Mode.Edit);
+					
+					// Create a marker for the new location
+					if (mCurrSelectedId == 0) {
+						MapFragment mapFragment = mDetailsFragment.getMapFragment();
+						if (mapFragment != null)
+							mapFragment.addTmpMarker();
+					}
 				}
 				return true;
 			
@@ -364,12 +390,36 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
      * MarkFragment.OnSpotEditListener callbacks
      */
 	public void onSaveEdit(long id, LocationInfo loc) {
-		saveLocation(id, loc, true);
-		
+		loc.validateName();
+		long savedId = saveLocation(id, loc, true);
+		// TODO:
+		// Should we do a stricter check to see if 
+		// (id == 0 && savedId > 0) just to be safe?
+		if (savedId > 0) {
+			// TODO: We need to find a way to also highlight the
+			// the ListFragment's ListView...
+			// *** TODO *** TODO *** TODO ***
+			mCurrSelectedId = savedId;
+		}
+
+		// The location's name and type may have changed, 
+		// reload the ListFragment.
 		if (mSpotsFragment != null)
 			mSpotsFragment.reloadListView();
 		
 		setDetailsFragmentMode(Mode.Display);
+		
+		if (mDetailsFragment != null) {
+			MapFragment mapFragment = mDetailsFragment.getMapFragment();
+			if (mapFragment != null) {
+				if (id != 0) {
+					mapFragment.updateMarker(id, loc);				
+				} else if (mCurrSelectedId > 0) { 
+					// (id == 0 && mCurrSelectedId > 0)
+					mapFragment.convertTmpMarker(mCurrSelectedId, loc);
+				}
+			}
+		}		
 	}
 
 	public void onCancelEdit() {
@@ -379,6 +429,11 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		*/
 		
 		setDetailsFragmentMode(Mode.Display);
+
+		// Remove tmp marker if there was one
+		MapFragment mapFragment = mDetailsFragment.getMapFragment();
+		if (mapFragment != null)
+			mapFragment.removeTmpMarker();
 	}
 
 	public void onLatLngCheck(double lat, double lng) {
@@ -417,10 +472,15 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 	public void onCameraChange(double lat, double lng) {
 		if (!mIgnoreCamChange && mSpotsFragment != null) {
 			// Hide the previous marker info window if it's showing
-			if (mDetailsFragment != null) {
+			if (mDetailsFragment != null && mCurrSelectedId != 0) {
 				MapFragment mapFragment = mDetailsFragment.getMapFragment();
-				if (mapFragment != null)
-					mapFragment.activateMarker(mCurrSelectedId, false);				
+				if (mapFragment != null) {
+					mapFragment.activateMarker(mCurrSelectedId, false);
+				
+					// Create a marker for the new location
+					if (mDetailsFragment.getMode() == Mode.Edit)
+						mapFragment.addTmpMarker(lat, lng);
+				}
 			}
 			
 			// Clear the List fragment's ListView
@@ -435,6 +495,12 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 				// camera change event.
 				if (mShowEditOnCamChange) {
 					setDetailsFragmentMode(Mode.Edit);
+
+					// Create a marker for the new location
+					MapFragment mapFragment = mDetailsFragment.getMapFragment();
+					if (mapFragment != null)
+						mapFragment.addTmpMarker(lat, lng);
+
 					mShowEditOnCamChange = false;
 				}
 			}
@@ -481,4 +547,17 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		}
 	}
 	public void onSpotCreate() {}
+	
+	public void onSpotDeleted(long id) {
+		if (mDetailsFragment != null) {
+			// If we are deleting a location that we are editing,
+			// go to DISPLAY mode in DetailsFragment.
+			if (id == mCurrSelectedId && mDetailsFragment.getMode() == Mode.Edit)
+				mDetailsFragment.setMode(Mode.Display);
+				
+			MapFragment mapFragment = mDetailsFragment.getMapFragment();
+			if (mapFragment != null)
+				mapFragment.removeMarker(id);
+		}
+	}
 }

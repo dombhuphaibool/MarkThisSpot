@@ -31,6 +31,7 @@ import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -79,7 +80,8 @@ public class MapFragment extends Fragment
 	private GoogleMap mMap;		// *** Note: Do not hold on to any objects obtained from GoogleMap
 								// as this is owned by the view SupportMapFragment and will cause
 								// memory leaks, etc. (so don't hold onto markers, etc).
-	
+
+	private Marker mTmpMarker = null;
 	private int mMapType = 1;
 	
 	// Stores the current instantiation of the location client in this object
@@ -159,6 +161,8 @@ public class MapFragment extends Fragment
         	mCurrPos = new LatLng(savedInstanceState.getDouble(CURR_POS_LAT),
 					 			  savedInstanceState.getDouble(CURR_POS_LNG));
         } 
+        
+        getLoaderManager().initLoader(LOADER_ID, null, this);
         /*
         else {
         	if (mCurrZoom < 0.0f)
@@ -196,6 +200,19 @@ public class MapFragment extends Fragment
 						ml.onMapClick(loc.latitude, loc.longitude); 
 				}
 			});
+			mMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {				
+				@Override
+				public void onMarkerDragStart(Marker marker) {}
+
+				@Override
+				public void onMarkerDragEnd(Marker marker) {
+					LatLng pos = marker.getPosition();
+					animateCamera(pos.latitude, pos.longitude);
+				}
+				
+				@Override
+				public void onMarkerDrag(Marker marker) {}
+			});
 			mMap.setOnMapLongClickListener(this);
 			mMap.setOnCameraChangeListener(this);
 			mMap.setOnMarkerClickListener(this);
@@ -210,8 +227,7 @@ public class MapFragment extends Fragment
 		// Get rid of all GoogleMap's Marker references as 
 		// GoogleMap handles its lifecycle and we do not want
 		// to leak memory since we are disconnecting.
-		mLocIdToMarker.clear();
-		mMarkerIdToLocId.clear();
+		clearAllMarkers(false);
 		
         // Disconnecting the client invalidates it.
         mLocationClient.disconnect();
@@ -271,43 +287,74 @@ public class MapFragment extends Fragment
     // to see if isServicesConnected(), and that mLocationClient
     // is valid and mLocationClient.isConnected(), and that
     // the GoogleMap mMap object is valid
-    private void addMarkerNoCheck(long id, LocationInfo loc) {
+    private void addMarkerNoCheck(long id, LocationInfo loc, boolean showInfo) {
     	String snippet = (id == 1) ? "" : loc.getType() + ":\n\r" + loc.getDesc();
 		Marker marker = mMap.addMarker(new MarkerOptions()
 							.position(new LatLng(loc.getLat(), loc.getLng()))
 							.title(loc.getName())
 							.snippet(snippet));
     	if (marker != null) {
-    		mLocIdToMarker.put(id, marker);
-    		mMarkerIdToLocId.put(marker.getId(), id);
+    		mLocIdToMarker.put(Long.valueOf(id), marker);
+    		mMarkerIdToLocId.put(marker.getId(), Long.valueOf(id));
+    		if (showInfo)
+    			marker.showInfoWindow();
     	}
     }
     
-    public void addMarker(long id, LocationInfo loc) {
+    public void addMarker(long id, LocationInfo loc, boolean showInfo) {
 		if (isServicesConnected() && mLocationClient != null) {
 			if (mLocationClient.isConnected() && mMap != null) {
-				addMarkerNoCheck(id, loc);
+				addMarkerNoCheck(id, loc, showInfo);
 			}
 		}
+    }
+    
+    public void addTmpMarker() {
+    	addTmpMarker(mCurrPos.latitude, mCurrPos.longitude);
+    }
+    
+    public void addTmpMarker(double lat, double lng) {
+		if (isServicesConnected() && mLocationClient != null) {
+			if (mLocationClient.isConnected() && mMap != null) {
+				removeTmpMarker();
+				mTmpMarker = mMap.addMarker(new MarkerOptions()
+							.position(new LatLng(lat, lng))
+							.title("New Location")
+							.draggable(true)
+							.icon(BitmapDescriptorFactory
+								.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)));
+			}
+		}    	
     }
 
-    /*
-    public void addMarkers(ArrayList<LocationInfo> locs) {
-		if (isServicesConnected() && mLocationClient != null) {
-			if (mLocationClient.isConnected() && mMap != null) {
-				for (LocationInfo loc : locs) {
-					mMap.addMarker(new MarkerOptions()
-						.position(new LatLng(loc.getLat(), loc.getLng()))
-						.title(loc.getName())
-						.snippet(loc.getType() + "\n" + loc.getDesc()));
-				}
-			}
-		}
+    public void convertTmpMarker(long id, LocationInfo loc) {
+    	if (mTmpMarker != null) {
+    		/*
+    		removeTmpMarker();
+    		addMarker(id, loc, true);
+    		*/
+    		mTmpMarker.setDraggable(false);
+    		mTmpMarker.setIcon(BitmapDescriptorFactory
+						.defaultMarker(BitmapDescriptorFactory.HUE_RED));
+    		updateMarkerInfo(mTmpMarker, id, loc);
+    		mLocIdToMarker.put(Long.valueOf(id), mTmpMarker);
+    		mMarkerIdToLocId.put(mTmpMarker.getId(), Long.valueOf(id));
+    		
+    		// Don't hold on to the tmp marker refrence now that we
+    		// have it in the hash map
+    		mTmpMarker = null;    		
+    	}    	
     }
-	*/
+
+    public void removeTmpMarker() {
+    	if (mTmpMarker != null) {
+    		mTmpMarker.remove();
+    		mTmpMarker = null;
+    	}
+    }
     
     public void activateMarker(long id, boolean activate) {
-    	Marker marker = mLocIdToMarker.get(id);
+    	Marker marker = mLocIdToMarker.get(Long.valueOf(id));
     	if (marker != null) {
     		if (activate)
     			marker.showInfoWindow();
@@ -316,12 +363,44 @@ public class MapFragment extends Fragment
     	}
     }
 
+    private void updateMarkerInfo(Marker marker, long id, LocationInfo loc) {
+    	if (marker != null) {
+    		marker.hideInfoWindow();
+        	marker.setTitle(loc.getName());
+        	String snippet = (id == 1) ? "" 
+        			: loc.getType() + ":\n\r" + loc.getDesc();
+        	marker.setSnippet(snippet);
+        	marker.setPosition(new LatLng(loc.getLat(), loc.getLng()));
+        	marker.showInfoWindow();
+    	}
+    }
+    
+    public void updateMarker(long id, LocationInfo loc) {
+    	Marker marker = mLocIdToMarker.get(Long.valueOf(id));
+    	updateMarkerInfo(marker, id, loc);
+    }
+    
     public void removeMarker(long id) {
-    	Marker marker = mLocIdToMarker.remove(id);
+    	Marker marker = mLocIdToMarker.remove(Long.valueOf(id));
     	if (marker != null) {
     		mMarkerIdToLocId.remove(marker.getId());
     		marker.remove();
     	}
+    }
+
+    public void clearAllMarkers(boolean remove) {
+		// Get rid of all GoogleMap's Marker references as 
+		// GoogleMap handles its lifecycle and we do not want
+		// to leak memory since we are disconnecting.
+    	if (remove) {
+    		for (Marker marker : mLocIdToMarker.values()) {
+    			if (marker != null)
+    				marker.remove();
+    		}    			
+    	}
+		mLocIdToMarker.clear();
+		mMarkerIdToLocId.clear();
+		mTmpMarker = null;
     }
     
     public LocationInfo getCurrMapLocation() {
@@ -406,23 +485,49 @@ public class MapFragment extends Fragment
 	@Override
 	public boolean onMarkerClick(Marker marker) {
     	// Toast.makeText(mActivity, "Marker Click: " + marker.getId(), Toast.LENGTH_SHORT).show();
-		long id = mMarkerIdToLocId.get(marker.getId());
-		for (OnMapListener ml : mMapListeners)
-			ml.onMarkerClick(id);
+
+		// Cannot compare with ==, must use marker's ID 
+		// to match as it's the way GoogleMap works...
+		if (mTmpMarker != null && mTmpMarker.getId().equals(marker.getId())) {
+			LatLng pos = marker.getPosition();
+			animateCamera(pos.latitude, pos.longitude);
+		} else {
+			removeTmpMarker();
+			Long id = mMarkerIdToLocId.get(marker.getId());
+			if (id != null) {
+				for (OnMapListener ml : mMapListeners)
+					ml.onMarkerClick(id.longValue());
+			}
+		}
+		
 		// return false stating that we are not consuming the event
 		// so that the default behavior can execute.
 		return false;
 	}
+
+	/*
+	 * GoogleMap.OnMarkerDragListener callback
+	 */
+	/*
+	public void onMarkerDragStart(Marker marker) {}
+	public void onMarkerDrag(Marker marker) {}
+	public void onMarkerDragEnd(Marker marker) {}
+	*/
 	
 	/*
 	 * GoogleMap.OnInfoWindowClickListener callback
 	 */
 	@Override
 	public void onInfoWindowClick(Marker marker) {
-    	// Toast.makeText(mActivity, "Info Window Click: " + marker.getId(), Toast.LENGTH_SHORT).show();		
-		long id = mMarkerIdToLocId.get(marker.getId());
-		for (OnMapListener ml : mMapListeners)
-			ml.onInfoWindowClick(id);
+    	// Toast.makeText(mActivity, "Info Window Click: " + marker.getId(), Toast.LENGTH_SHORT).show();
+		
+		if (mTmpMarker == null || !mTmpMarker.getId().equals(marker.getId())) {
+			Long id = mMarkerIdToLocId.get(marker.getId());
+			if (id != null) {
+				for (OnMapListener ml : mMapListeners)
+					ml.onInfoWindowClick(id.longValue());
+			}
+		}
 	}
 	
     /*
@@ -447,7 +552,7 @@ public class MapFragment extends Fragment
         // LoaderManager will manage the Loader across the Activity/Fragment
         // lifecycle, will receive any new loads once they have completed,
         // and will report this new data back to us.
-        getLoaderManager().initLoader(LOADER_ID, null, this);
+        getLoaderManager().restartLoader(LOADER_ID, null, this);
         
 		for (OnMapListener ml : mMapListeners)
     		ml.onMapConnected();
@@ -535,6 +640,9 @@ public class MapFragment extends Fragment
 	        	assert(cursor != null);
 	        	if (cursor != null) {
 	        		if (cursor.moveToFirst()) {
+	        			// Remove all previous markers!
+	        			clearAllMarkers(true);
+	        			
 	        			int idColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_ROWID);
 	        			int nameColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_NAME);
 	        			int descColIdx = cursor.getColumnIndexOrThrow(SpotsContentProvider.KEY_DESC);
@@ -548,7 +656,7 @@ public class MapFragment extends Fragment
 	        				loc.setType(cursor.getString(typeColIdx));
 	        				loc.setLatLng(cursor.getDouble(latColIdx),
 	        							  cursor.getDouble(lngColIdx));
-	        				addMarkerNoCheck(cursor.getLong(idColIdx), loc);
+	        				addMarkerNoCheck(cursor.getLong(idColIdx), loc, false);
 	        			} while (cursor.moveToNext());        			
 	        		}
 	        	}

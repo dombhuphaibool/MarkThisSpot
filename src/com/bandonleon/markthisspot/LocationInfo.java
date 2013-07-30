@@ -66,7 +66,15 @@ public class LocationInfo {
 	public double getLng() { return mLng; }
 	public int getColor() { return mColor; }
 	public int getShow() { return mShow; }	
-	
+
+	/*
+	 * Do not allow empty names, as this is used to be
+	 * displayed in the ListVie of the ListFragment.
+	 */
+	public void validateName() {
+		if (mName.isEmpty())
+			mName = DEFAULT_NAME + String.valueOf(++mLocId);
+	}
 	/*
 	 * Utility method for return ContentValues so that
 	 * the client can easily pass it to insert or update 
@@ -74,8 +82,8 @@ public class LocationInfo {
 	 */
 	public ContentValues getContentValues() {
 		ContentValues values = new ContentValues();
-        values.put(SpotsContentProvider.KEY_NAME, 
-        	mName.isEmpty() ? DEFAULT_NAME + String.valueOf(++mLocId) : mName);
+		validateName();
+        values.put(SpotsContentProvider.KEY_NAME, mName);
         // If it's for 'Current location', do not include a location type
         values.put(SpotsContentProvider.KEY_TYPE, mName.equals(CURR_LOC_NAME) ? "" : mType);
         values.put(SpotsContentProvider.KEY_DESC, mDesc);

@@ -46,6 +46,7 @@
 	</string-array>
     
     <!-- Messages -->
+    <string name="cannot_del_curr_loc">Cannot delete Current Location</string>
     <string name="connected">Client connected</string>
     <string name="connection_error_code_unknown">Unknown connection error code:  %1$d</string>
     <string name="connection_failed">Connection failed</string>
