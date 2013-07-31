@@ -213,6 +213,15 @@ public class MainActivity extends FragmentActivity
 	 */
 	public void updateCurrentLocation(LocationInfo loc) {
 		saveLocation(1, loc, true);
+		
+		// updateCurrentLocation() gets called from 
+		// DetailsFragment.onMapConnected(). If the 'Current Location', 
+		// item index 1 does not yet exist in the database 
+		// (eg, first installation), it will get created. In this case,
+		// we need to refresh the ListFragment's ListView to show the
+		// new location.
+		if (mSpotsFragment != null)
+			mSpotsFragment.reloadListView();
 	}
 	
 	/*
