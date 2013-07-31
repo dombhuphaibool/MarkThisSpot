@@ -43,7 +43,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
  * 				dombhuphaibool@yahoo.com
  * 
  * Created: 	19 July 2013
- * Modified:	27 July 2013
+ * Modified:	30 July 2013
  *
  * Description: 
  * Map fragment is the fragment to view and control Google Map v2.0
@@ -65,33 +65,56 @@ public class MapFragment extends Fragment
 	// Fragment in which they reside.
 	private static final int LOADER_ID = 2;
 	
+    // IDs for storing tmp data (for orientation change, etc)
 	private static final String CURR_POS_LAT = "curr_lat";
 	private static final String CURR_POS_LNG = "curr_lng";
 	private static final String CURR_ZOOM = "curr_zoom";
-	private static final float DEFAULT_ZOOM = 14;
-	
-	// private static final LatLng US_CENTER = new LatLng(38.5, -99.6);
+		
+	// Use GoogleMap.getMinZoomLevel() and GoogleMap.getMaxZoomLevel() to 
+	// find zoom limits. The initial level is arbitrary as it seems that this
+	// zoom level is pretty good for what we want to start with.
+	//
+	// TODO:
+	// Not sure if we want to always zoom to the default zoom level when the 
+	// user selects a location of keep the current zoom level.
 	private static final float INITIAL_ZOOM = 8;
-	
+	private static final float DEFAULT_ZOOM = 14;
+
+	// Keep track of the current position, zoom level, and map type.
+	// This is so we can restore the value after an orientation change,
+	// or a pause/resume event in Android.
 	private LatLng mCurrPos = null;
 	private float mCurrZoom = -1.0f;
-	
-	private SupportMapFragment mSMapFragment = null;
-	private GoogleMap mMap;		// *** Note: Do not hold on to any objects obtained from GoogleMap
-								// as this is owned by the view SupportMapFragment and will cause
-								// memory leaks, etc. (so don't hold onto markers, etc).
-
-	private Marker mTmpMarker = null;
 	private int mMapType = 1;
 	
-	// Stores the current instantiation of the location client in this object
-    private LocationClient mLocationClient;
-    private Location mCurrentLocation;
-    private Activity mActivity;
-    
+	// *** Note: Do not hold on to any objects obtained from GoogleMap
+	// as this is owned by the view SupportMapFragment and will cause
+	// memory leaks, etc. (so don't hold onto markers, etc). ***
+	private GoogleMap mMap;		
+
+	// Really we should be keeping the marker's ID (eg, Marker.getId())
+	// and then query the Marker from the GoogleMap object by the ID
+	// string. But alas, Google Maps V2 does not provide a way for us
+	// to retrieve the Marker object by its String ID, so we must keep
+	// a reference to it. The mTmpMarker is created to represent the 
+	// current new location being created. This will then be converted
+	// to a normal Marker when the user decides to save the changes.
+	// The hash maps also keep references to Markers for the above reason
+	// instead of keeping the Marker's string ID. The hash maps are used
+	// to find Markers by location ID (or ListView item ID) and vice versa.
+	private Marker mTmpMarker = null;
 	private HashMap<Long, Marker> mLocIdToMarker = new HashMap<Long, Marker>();
-	private HashMap<String, Long> mMarkerIdToLocId = new HashMap<String, Long>();
+	private HashMap<String, Long> mMarkerIdToLocId = new HashMap<String, Long>();	
 	
+	// GeoLocation stuff. Stores the location client.
+    private LocationClient mLocationClient = null;
+
+    // UI member variables: 
+    // Actual Google map fragment and MainActivity
+	private SupportMapFragment mSMapFragment = null;
+    private Activity mActivity = null;
+
+    // Allow clients to be notified when events occur in the MapFragment
 	public interface OnMapListener {
 		public void onMapConnected();
 		public void onMapDisconnected();
@@ -110,13 +133,12 @@ public class MapFragment extends Fragment
 		mMapListeners.add(l);
 	}
 	// *Note* Android reconstruct fragments (per orientation change)
-	// via the default constructor. 
+	// via the default constructor. Do not override constructor or if so,
+	// we must supply a default constructor.
 	
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-    	// Don't think that there's a need to call super...
-    	// super.onCreateView(inflater, container, savedInstanceState);    	
 		return inflater.inflate(R.layout.map, container, false);
     }
 
@@ -133,12 +155,6 @@ public class MapFragment extends Fragment
         mActivity = getActivity();
         assert(mActivity != null);
 
-        /*
-        mSMapFragment = SupportMapFragment.newInstance();
-        FragmentTransaction ft = getChildFragmentManager().beginTransaction();
-        ft.add(R.id.map, mSMapFragment);
-        ft.commit();
-        */
         FragmentManager fm = getChildFragmentManager();
         mSMapFragment = (SupportMapFragment) fm.findFragmentById(R.id.map);
         if (mSMapFragment == null) {
@@ -163,14 +179,6 @@ public class MapFragment extends Fragment
         } 
         
         getLoaderManager().initLoader(LOADER_ID, null, this);
-        /*
-        else {
-        	if (mCurrZoom < 0.0f)
-        		mCurrZoom = US_ZOOM;
-        	if (mCurrPos == null)
-        		mCurrPos = US_CENTER;
-        }        
-        */
     }
     
 	@Override
@@ -188,9 +196,13 @@ public class MapFragment extends Fragment
     public void onStart() {
         super.onStart();
         // Connect the client.
-        mLocationClient.connect();
+        if (mLocationClient != null)
+        	mLocationClient.connect();
         
-		// mMap = ((SupportMapFragment) ((FragmentActivity) mActivity).getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
+        assert(mSMapFragment != null);
+        if (mSMapFragment == null)
+        	return;
+        
         mMap = mSMapFragment.getMap();
 		if (mMap != null) {
 			mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
@@ -230,10 +242,22 @@ public class MapFragment extends Fragment
 		clearAllMarkers(false);
 		
         // Disconnecting the client invalidates it.
-        mLocationClient.disconnect();
+		if (mLocationClient != null)
+			mLocationClient.disconnect();
         super.onStop();
     }	
-    
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		
+		// At this point all of these member variables should be valid!
+		assert(mLocationClient != null);
+		assert(mSMapFragment != null);
+		assert(mActivity != null);
+		assert(mMap != null);
+	}
+	
 	public void saveSettings(Context context) {
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
 		String mapType = sharedPref.getString(SettingsActivity.KEY_PREF_MAPTYPE, "1");
@@ -263,10 +287,16 @@ public class MapFragment extends Fragment
         }
     }
 	
+    /*
+     * Public method to animate the camera
+     */
     public void animateCamera(double lat, double lng) {
     	setCamera(true, lat, lng, DEFAULT_ZOOM);
     }
     
+    /*
+     * Helper method to animate or move the camera
+     */
     private void setCamera(boolean animate, double lat, double lng, float zoom) {
 		if (isServicesConnected() && mLocationClient != null) {
 			if (mLocationClient.isConnected() && mMap != null) {
@@ -282,11 +312,13 @@ public class MapFragment extends Fragment
 		}    	
     }
 
-    // Helper method for adding marker. By calling this method
-    // directly, it is assumed that the caller has alredy checked
-    // to see if isServicesConnected(), and that mLocationClient
-    // is valid and mLocationClient.isConnected(), and that
-    // the GoogleMap mMap object is valid
+    /*
+     * Helper method for adding marker. By calling this method
+     * directly, it is assumed that the caller has already checked
+     * to see if isServicesConnected(), and that mLocationClient
+     * is valid and mLocationClient.isConnected(), and that
+     * the GoogleMap mMap object is valid
+     */
     private void addMarkerNoCheck(long id, LocationInfo loc, boolean showInfo) {
     	String snippet = (id == 1) ? "" : loc.getType() + ":\n\r" + loc.getDesc();
 		Marker marker = mMap.addMarker(new MarkerOptions()
@@ -413,10 +445,10 @@ public class MapFragment extends Fragment
     	LocationInfo loc = new LocationInfo();
 		if (isServicesConnected() && mLocationClient != null) {
 			if (mLocationClient.isConnected()) {
-				mCurrentLocation = mLocationClient.getLastLocation();
-				if (mCurrentLocation != null) {
-					loc.setLatLng(mCurrentLocation.getLatitude(),
-								  mCurrentLocation.getLongitude());
+				Location currLocation = mLocationClient.getLastLocation();
+				if (currLocation != null) {
+					loc.setLatLng(currLocation.getLatitude(),
+								  currLocation.getLongitude());
 				}
 			}
 		}
@@ -430,12 +462,12 @@ public class MapFragment extends Fragment
 	public void onGetLocationClicked(View view) {
 		if (isServicesConnected() && mLocationClient != null) {
 			if (mLocationClient.isConnected()) {
-				mCurrentLocation = mLocationClient.getLastLocation();
-				if (mCurrentLocation != null) {
+				Location currLocation = mLocationClient.getLastLocation();
+				if (currLocation != null) {
 					// mLatLng.setText(LocationUtils.getLatLng(this, mCurrentLocation));
 			        
 					if (mMap != null) {
-						LatLng pos = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+						LatLng pos = new LatLng(currLocation.getLatitude(), currLocation.getLongitude());
 						mCurrPos = pos;
 						mMap.addMarker(new MarkerOptions().position(pos).title("Marker"));
 						mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos,14), 2500, null);
@@ -556,14 +588,14 @@ public class MapFragment extends Fragment
         
 		for (OnMapListener ml : mMapListeners)
     		ml.onMapConnected();
-    	Toast.makeText(mActivity, "Connected", Toast.LENGTH_SHORT).show();
+    	Toast.makeText(mActivity, R.string.connected, Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onDisconnected() {
 		for (OnMapListener ml : mMapListeners)
     		ml.onMapDisconnected();
-    	Toast.makeText(mActivity, "Disconnected. Please re-connect.", Toast.LENGTH_SHORT).show();
+    	Toast.makeText(mActivity, R.string.disconnected, Toast.LENGTH_SHORT).show();
     }
 	
     /*

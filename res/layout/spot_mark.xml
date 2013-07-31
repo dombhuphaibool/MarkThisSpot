@@ -111,6 +111,13 @@
 	        android:text="@string/save_edit"
 	        style="@android:attr/buttonBarButtonStyle" />
 	    <Button 
+	        android:id="@+id/delete_edit"
+	        android:layout_weight="1"
+	        android:layout_width="0dp"
+	        android:layout_height="wrap_content"
+	        android:text="@string/delete_edit"
+	        style="@android:attr/buttonBarButtonStyle" />
+	    <Button 
 	        android:id="@+id/cancel_edit"
 	        android:layout_weight="1"
 	        android:layout_width="0dp"

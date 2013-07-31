@@ -21,7 +21,7 @@ import android.view.MenuItem;
  * 
  *****************************************************************************/
 public class SettingsActivity extends Activity {
-
+    // IDs for storing tmp data (for orientation change, etc)
 	public static final String KEY_LATLNG_OVERRIDE = "pref_latlng_override";
 	public static final String KEY_PREF_MAPTYPE = "pref_maptype";
 	

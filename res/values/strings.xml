@@ -18,7 +18,8 @@
 	<string name="spot_lat">Lat:</string>
 	<string name="spot_lng">Lng:</string>
 	<string name="check_latlng">Check</string>
-	<string name="save_edit">OK</string>
+	<string name="save_edit">Save</string>
+	<string name="delete_edit">Delete</string>
 	<string name="cancel_edit">Cancel</string>
 			
     <string name="latlng">Latitude &amp; Longitude: </string>

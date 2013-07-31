@@ -13,7 +13,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
-import android.widget.Toast;
+// import android.widget.Toast;
 
 import com.bandonleon.markthisspot.DetailsFragment.Mode;
 
@@ -23,26 +23,31 @@ import com.bandonleon.markthisspot.DetailsFragment.Mode;
  * 				dombhuphaibool@yahoo.com
  * 
  * Created: 	19 July 2013
- * Modified:	27 July 2013
+ * Modified:	30 July 2013
  *
  * Description: 
  * Main Activity of the application.
  ******************************************************************************/
-public class MainActivity extends FragmentActivity implements SpotsFragment.OnSpotListener,
-															  MarkFragment.OnSpotEditListener,
-															  MapFragment.OnMapListener {
+public class MainActivity extends FragmentActivity 
+						  implements SpotsFragment.OnSpotListener,
+									 MarkFragment.OnSpotEditListener,
+									 MapFragment.OnMapListener {
 
     // Debugging tag for the application
     public static final String APPTAG = "MarkThisSpot";
-    // Id for storing temp data (for orientation change, etc)
+
+    // IDs for storing tmp data (for orientation change, etc)
     private static final String CURR_SELID = "curSelId";
     private static final String LAST_SP_MODE = "lastSinglePaneMode";
     
+    // Denotes activity IDs that can be started from MainActivity
 	private static final int ACTIVITY_SETTINGS = 1;
 	private static final int ACTIVITY_MARK = 2;
 
+	// Unique view ID for the DetailsFragment container
 	private static final int CONTAINER_DETAILS_ID = 9999;
-	
+
+	// Different view modes we can be in while running MainActivity
 	private enum ViewMode { DualPane, List, Details }
 	
 	// In Portrait orientation, we only show the ListView and in Landscape
@@ -55,7 +60,9 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
     ViewMode mViewMode;
     ViewMode mLastSinglePaneMode;
     long mCurrSelectedId = 0;
-    
+
+    // UI member variables. These should all be vaild for out activity to
+    // run correctly.
     LinearLayout mContainer = null;
     SpotsFragment mSpotsFragment = null;
     DetailsFragment mDetailsFragment = null;
@@ -154,12 +161,17 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		mSpotsFragment = (SpotsFragment) sfm.findFragmentById(android.R.id.list);
 
 		setSinglePaneMode(mViewMode);
+		
+		// At this point all of our UI member variables should be valid!
+		assert(mContainer != null);
+		assert(mDetailsFragment != null);
+		assert(mSpotsFragment != null);
 	}
 	
 	private void setSinglePaneMode(ViewMode mode) {
 		switch (mode) {
 			case DualPane:
-				
+				// Nothing to do for now.
 			break;
 			
 			case List:
@@ -240,13 +252,6 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
         		loc.getContentValues(), null, null);
     		if (rowsUpdated > 0)
     			savedId = id;
-    		/*
-    		if (c.moveToFirst()) {
-	        	int nameColIdx = c.getColumnIndex(SpotsContentProvider.KEY_NAME);
-	        	String name = c.getString(nameColIdx);
-	        	String n = "  " + name;
-        	}
-        	*/
         }
         return savedId;
 	}
@@ -422,12 +427,12 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 		}		
 	}
 
-	public void onCancelEdit() {
-		/*
+	public void onDeleteEdit(long id) {
 		if (mSpotsFragment != null)
-			mSpotsFragment.reloadListView();
-		*/
-		
+			mSpotsFragment.deleteItem(id);
+	}
+	
+	public void onCancelEdit() {
 		setDetailsFragmentMode(Mode.Display);
 
 		// Remove tmp marker if there was one
@@ -546,7 +551,6 @@ public class MainActivity extends FragmentActivity implements SpotsFragment.OnSp
 				mapFragment.activateMarker(id, true);
 		}
 	}
-	public void onSpotCreate() {}
 	
 	public void onSpotDeleted(long id) {
 		if (mDetailsFragment != null) {

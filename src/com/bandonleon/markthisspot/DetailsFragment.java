@@ -8,12 +8,11 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
-import android.util.Log;
+// import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
-import android.widget.Toast;
+// import android.widget.Toast;
 
 /******************************************************************************
  * 
@@ -21,7 +20,7 @@ import android.widget.Toast;
  * 				dombhuphaibool@yahoo.com
  * 
  * Created: 	19 July 2013
- * Modified:	27 July 2013
+ * Modified:	30 July 2013
  *
  * Description: 
  * The fragment which contains the all of the spot's detail.
@@ -34,23 +33,31 @@ import android.widget.Toast;
 public class DetailsFragment extends Fragment 
 							 implements MapFragment.OnMapListener {
 
+    // IDs for storing tmp data (for orientation change, etc)
 	private static final String KEY_LIST_IDX_ID = "ListIdxId";
 	private static final String KEY_MODE = "DisplayMode";
+
+	// The two display modes we can be in.
 	public enum Mode { Display, Edit };
-	
-	private long mListIdxId = 0;
 	private Mode mMode;
+
+	// This should correspond to the currently selected ListView item's ID.
+	// TODO: We should probably find a way to keep it only in one place so 
+	// there is less chance of it being mismatched. Currently, ListFragment
+	// does not know about DetailsFragment, and vice versa. An option is to
+	// store it in MainActivity as both will know about MainActivity.
+	private long mListIdxId = 0;
+
+	// UI member variables...
 	// private TextView mSpotName;
 	// private TextView mSpotDesc;
-	private View mMarkFragmentContainer;
-	private MapFragment mMapFragment = null;
+	private View mMarkFragmentContainer = null;
 	private MarkFragment mMarkFragment = null;
+	private MapFragment mMapFragment = null;
 	private LocationInfo mLoc = null;
 	
     public MapFragment getMapFragment() { return mMapFragment; }
-	public DetailsFragment() {
-		Log.w("DetailsFragment", "Constructor");
-	}
+	// public DetailsFragment() { Log.w("DetailsFragment", "Constructor"); }
 
 	/*
 	 * Fragment Life cylce is as follows:
@@ -78,18 +85,6 @@ public class DetailsFragment extends Fragment
 	@Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-		/*
-        if (container == null) {
-            // We have different layouts, and in one of them this
-            // fragment's containing frame doesn't exist.  The fragment
-            // may still be created from its saved state, but there is
-            // no reason to try to create its view hierarchy because it
-            // won't be displayed.  Note this is not needed -- we could
-            // just run the code below, where we would create and return
-            // the view hierarchy; it would just never be used.
-            return null;
-        }
-		*/
 		
         mMode = Mode.Display;
 
@@ -151,6 +146,11 @@ public class DetailsFragment extends Fragment
 	@Override
 	public void onResume() {
 		super.onResume();
+
+		// At this point, all UI member variables should be valid!
+		assert(mMarkFragmentContainer != null);
+		assert(mMarkFragment != null);
+		assert(mMapFragment != null);
 	}
 	
 	// Used to record transient states. eg, when the orientation changes, 
@@ -260,17 +260,19 @@ public class DetailsFragment extends Fragment
 
     public Mode getMode() { return mMode; }
     public void setMode(Mode mode) {
-//-    	if (mode != mMode) {
-			/*
+    	// TODO: Should we check if the mode is not the same for optimization?
+    	// if (mode != mMode) {
+			
+    	/*
         	int vis = (mode == Mode.Display) ? View.VISIBLE : View.GONE;
         	if (mSpotName != null)
         		mSpotName.setVisibility(vis);
         	if (mSpotDesc != null)
         		mSpotDesc.setVisibility(vis);        	
-        	*/
-    		showEdit(mode == Mode.Edit);
-    		mMode = mode;
-//-    	}
+        */
+    	showEdit(mode == Mode.Edit);
+    	mMode = mode;   		
+    	// }
     }
     
     private void showEdit(boolean show) {
@@ -319,30 +321,23 @@ public class DetailsFragment extends Fragment
     	// Now that we're connected, get the current location...
 		if (mLoc == null)
 			mLoc = mMapFragment.getCurrLocation();
-
-    	/*
-    	if (mMapFragment != null && mLoc != null)
-    		mMapFragment.animateCamera(mLoc.getLat(), mLoc.getLng());
-    	*/
     }
     
-    public void onMapDisconnected() {
-    	
-    }
+    public void onMapDisconnected() {}
     
     public void onMapClick(double lat, double lng) {
-    	Toast.makeText(getActivity(), "onMapClick", Toast.LENGTH_SHORT).show();
+    	// Toast.makeText(getActivity(), "onMapClick", Toast.LENGTH_SHORT).show();
     }
     
     public void onMapLongClick(double lat, double lng) {
-    	Toast.makeText(getActivity(), "onMapLongClick", Toast.LENGTH_SHORT).show();    	
+    	// Toast.makeText(getActivity(), "onMapLongClick", Toast.LENGTH_SHORT).show();    	
     }
     
     public void onCameraChange(double lat, double lng) {
     	if (mMarkFragment != null)
     		mMarkFragment.updateLatLng(lat, lng);
     	
-    	Toast.makeText(getActivity(), "onCameraChange", Toast.LENGTH_SHORT).show();    	
+    	// Toast.makeText(getActivity(), "onCameraChange", Toast.LENGTH_SHORT).show();    	
     }
     
     public void onMarkerClick(long id) {}

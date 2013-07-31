@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- 
+		These constants requires API level 14. Since our current 
+		min API level is 11, use the actual values for now until
+		we require API level 14.
+
+		holo blue light  = 33b5e5 ( rgb: 51, 181, 229 )
+		holo blue dark 	 = 0099cc ( rgb: 0,  153, 204 ) 
+		holo blue bright = 00ddff ( rgb: 0,  221, 255 )
+	-->    
+	<color name="listview_highlight">#33b5e5</color>
+</resources>

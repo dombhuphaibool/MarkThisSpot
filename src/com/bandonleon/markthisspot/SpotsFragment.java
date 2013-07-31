@@ -3,7 +3,6 @@ package com.bandonleon.markthisspot;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.database.Cursor;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
@@ -16,7 +15,6 @@ import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.LayoutInflater;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,7 +28,7 @@ import android.widget.Toast;
  * 				dombhuphaibool@yahoo.com
  * 
  * Created: 	19 July 2013
- * Modified:	27 July 2013
+ * Modified:	30 July 2013
  * 
  * Description:
  * This is the List fragment. Data is retrieved from a SQLite database via
@@ -39,18 +37,27 @@ import android.widget.Toast;
  * access teh ContentProvider.
  * 
  ******************************************************************************/
-public class SpotsFragment extends ListFragment implements LoaderCallbacks<Cursor> {
+public class SpotsFragment extends ListFragment 
+						   implements LoaderCallbacks<Cursor> {
+	// IDs for context menu, invoked when the user performs a long press
+	// on any ListView items.
     private static final int DELETE_ID = Menu.FIRST;
     private static final int CANCEL_ID = Menu.FIRST + 1;
     
-	private static final String[] PROJECTION_SPOTS = new String[] { SpotsContentProvider.KEY_NAME, SpotsContentProvider.KEY_TYPE };
+    // The columns we are interested in to fill in our ListView
+	private static final String[] PROJECTION_SPOTS = new String[] 
+			{ SpotsContentProvider.KEY_NAME, SpotsContentProvider.KEY_TYPE };
+
+	// IDs for storing tmp data (for orientation change, etc)
+	private static final String CURR_LIST_POS = "currListPos";
 	
-	// The loader's unique id. Loader ids are specific to the Activity or
+	// The loader's unique ID. Loader IDs are specific to the Activity or
 	// Fragment in which they reside.
 	private static final int LOADER_ID = 1;
 
 	// The activity that contains our fragment
 	private Activity mActivity;
+	private ContentResolver mContentResolver;
 	
 	// The callbacks through which we will interact with the LoaderManager.
 	private LoaderManager.LoaderCallbacks<Cursor> mCallbacks;
@@ -58,12 +65,10 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
 	// The adapter that binds our data to the ListView
 	private SimpleCursorAdapter mAdapter;
 	  
-	// private static int mNoteNumber = 1;
-	private ContentResolver mContentResolver;
-    
+	// Listener to notify when the user selects or delete an item from 
+	// the ListView.
 	public interface OnSpotListener {
 		public void onSpotSelected(long id);
-		public void onSpotCreate();
 		public void onSpotDeleted(long id);
 	}
 	OnSpotListener mListener;
@@ -92,17 +97,20 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
 		super.onAttach(activity);
 		
         mActivity = getActivity();
-        try {
-        	mListener = (OnSpotListener) activity;
-        } catch (ClassCastException e) {
-        	throw new ClassCastException(activity.toString() + " must implement OnSpotListener");
+        if (mActivity != null) {
+	        try {
+	        	mListener = (OnSpotListener) activity;
+	        } catch (ClassCastException e) {
+	        	throw new ClassCastException(activity.toString() + 
+	        						" must implement OnSpotListener");
+	        }
         }
 	}
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//-        setHasOptionsMenu(true);
+        // setHasOptionsMenu(true);
     }
     
     @Override
@@ -146,11 +154,8 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
       
         mContentResolver = mActivity.getContentResolver();
 
-        // Configuration config = getResources().getConfiguration();
-        // if (config.orientation == Configuration.ORIENTATION_LANDSCAPE) {}
-
         if (savedInstanceState != null)
-        	mCurrListPos = savedInstanceState.getInt("currListPos", -1);
+        	mCurrListPos = savedInstanceState.getInt(CURR_LIST_POS, -1);
         
         ListView listView = getListView();
         if (listView != null) {
@@ -177,33 +182,40 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
     		}
     	}
     	*/
+    	
+    	// At this point, these member variables should be valid!
+    	assert(mActivity != null);
+    	assert(mContentResolver != null);
     }
     
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putInt("currListPos", mCurrListPos);
+        outState.putInt(CURR_LIST_POS, mCurrListPos);
     }
     
     // ------------------------------------------------------------------------
     // Options menu callbacks 
-    // - used for creating new notes
+    // TODO: Delete... We no longer add items to the options menu from here...
     // ------------------------------------------------------------------------    
+    /*
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
-//-        menu.add(0, CREATE_ID, 0, R.string.menu_create);
-        // inflater.inflate(R.string.menu_insert, menu);	should we call this also?
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {    	
         return super.onOptionsItemSelected(item);
     }
+    */
     
     // ------------------------------------------------------------------------
     // Context menu callbacks 
-    // - used for deleting new notes
+    // 
+    // Implementation of long click to delete an item in the ListView. 
+    // Long clicks invokes the context menu to pop up, which contains 
+    // 2 items: Delete and Cancel.
     // ------------------------------------------------------------------------    
     @Override
 	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
@@ -219,10 +231,7 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
     		case DELETE_ID:
     			AdapterContextMenuInfo info = (AdapterContextMenuInfo) item.getMenuInfo();
     			if (info.id > 1) {
-	    			mContentResolver.delete(Uri.withAppendedPath(SpotsContentProvider.CONTENT_URI, String.valueOf(info.id)), "", null);
-	    			reloadListView();
-	    	        if (mListener != null)
-	    	        	mListener.onSpotDeleted(info.id);
+    				deleteItem(info.id);
     			} else {
     				// TODO: Find a way to disable long click to delete on 
     				// 'Current Location' as it would be a much cleaner approach.
@@ -236,15 +245,52 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
 		return super.onContextItemSelected(item);
 	}
 
+    /*
+     * ListView highlighting logic. There are still some bugs...
+     * 
+     * TODO: Test this out thoroughly! Currently an item's view
+     * seems to be reused among other items that are not currently 
+     * visible. For example, if you have a long list, an item that 
+     * is currently in view can be highlighted. Setting the background
+     * on this view will also affect another item's view's background
+     * that is not currently visible. If you scroll down, then you see
+     * it's highlighted. I think Android does this for optimization
+     * reason as the two views will never be visible at the same time.
+     * 
+     * TODO: We also need to find a way to highlight a ListView item
+     * from just having the item's ID and not the actual view itself.
+     * Is there a way to find the item's view by its ID? If not, we
+     * need to find another way to highlight the ListView's item.
+     */
     private int mCurrListPos = -1;
     private View mCurrListSelection = null;
-    private static final int HIGHLIGHT_COLOR = android.R.color.holo_blue_light;
+    private static final int HIGHLIGHT_COLOR = R.color.listview_highlight;
     public void clearCurrListSelection() {
     	if (mCurrListSelection != null) {
     		mCurrListSelection.setBackgroundColor(getResources().getColor(android.R.color.transparent));
     		mCurrListSelection = null;
     	}
     }
+
+    /*
+     * If the user deletes an item from outside of the ListFragment, we
+     * need to be notified to keep the bookkeeping correct. Expose this
+     * API so that the MainActivity can perform the bookkeeping and clean-up.
+     * Current implementation allows the user to delete the item from
+     * MarkFragment.
+     */
+    public void deleteItem(long id) {
+    	assert(mContentResolver != null);
+    	if (mContentResolver != null) {
+			mContentResolver.delete(Uri.withAppendedPath(
+								SpotsContentProvider.CONTENT_URI, 
+								String.valueOf(id)), "", null);
+			reloadListView();
+	        if (mListener != null)
+	        	mListener.onSpotDeleted(id);
+    	}
+    }
+    
     // ------------------------------------------------------------------------
     // ListActivity callback 
     // - when a user selects an item in the ListView
@@ -253,10 +299,10 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
     public void onListItemClick(ListView l, View v, int position, long id) {
         super.onListItemClick(l, v, position, id);
         
-        // TODO: This doesn't really do anything... Remove?
+        // TODO: This doesn't really do anything because we are in
+        // 'touch-mode'... We probably should delete the commented out code.
         // getListView().setItemChecked(position, true);
         // getListView().setSelection(position);
-        // savedColor = ((ColorDrawable) v.getBackground()).getColor();
         if (v != mCurrListSelection) {
         	clearCurrListSelection();
             v.setBackgroundColor(getResources().getColor(HIGHLIGHT_COLOR));
@@ -266,45 +312,6 @@ public class SpotsFragment extends ListFragment implements LoaderCallbacks<Curso
 
         if (mListener != null)
         	mListener.onSpotSelected(id);
-        
-        /*
-        Intent intent = new Intent(this, NoteEdit.class);
-        intent.putExtra(NotesContentProvider.KEY_ROWID, id);
-        startActivityForResult(intent, ACTIVITY_EDIT);
-        */
-        
-        //--------------------------------------------------------------------
-        // The NoteEdit class now retrieves the data directly...
-        /*
-        Cursor c = mContentResolver.query(Uri.withAppendedPath(NotesContentProvider.CONTENT_URI, String.valueOf(id)), 
-        								  PROJECTION_ALL, "", null, null);
-        if (c != null) {
-            Intent intent = new Intent(this, NoteEdit.class);
-            intent.putExtra(NotesContentProvider.KEY_ROWID, id);
-            intent.putExtra(NotesContentProvider.KEY_TITLE, 
-            				c.getString(c.getColumnIndexOrThrow(NotesContentProvider.KEY_TITLE)));
-            intent.putExtra(NotesContentProvider.KEY_BODY,
-    						c.getString(c.getColumnIndexOrThrow(NotesContentProvider.KEY_BODY)));
-            startActivityForResult(intent, ACTIVITY_EDIT);
-        }
-     	*/
-        
-        // ---------------------------------------------------------------------
-        // An alternative is to reuse a saved cursor...
-        // If this works, it would be more efficient!
-        /*
-        if (mNotesCursor != null) {
-        	Cursor c = mNotesCursor;
-        	c.moveToPosition(position);
-        	Intent i = new Intent(this, NoteEdit.class);
-        	i.putExtra(NotesContentProvider.KEY_ROWID, id);
-        	i.putExtra(NotesContentProvider.KEY_TITLE, c.getString(
-        	        c.getColumnIndexOrThrow(NotesContentProvider.KEY_TITLE)));
-        	i.putExtra(NotesContentProvider.KEY_BODY, c.getString(
-        	        c.getColumnIndexOrThrow(NotesContentProvider.KEY_BODY)));
-        	startActivityForResult(i, ACTIVITY_EDIT);
-        }
-        */
     }
     
     // ------------------------------------------------------------------------

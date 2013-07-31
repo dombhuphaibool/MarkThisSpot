@@ -31,25 +31,35 @@ import android.util.Log;
  * 
  ******************************************************************************/
 public class SpotsContentProvider extends ContentProvider {
+	// Exposed strings so that a client can find our content provider via
+	// the content resolver.
 	public static final String AUTHORITY = "com.bandonleon.markthisspot.provider";
 	public static final String SPOTS_PATH = "spots";
-	public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/" + SPOTS_PATH);
+	public static final Uri CONTENT_URI = 
+			Uri.parse("content://" + AUTHORITY + "/" + SPOTS_PATH);
 	
-	private static final String MIME_TYPE_DIR = "vnd.android.cursor.dir/vnd.com.bandonleon.markthisspot.provider." + SPOTS_PATH;
-	private static final String MIME_TYPE_ITEM = "vnd.android.cursor.item/vnd.com.bandonleon.markthisspot.provider." + SPOTS_PATH;
+	private static final String MIME_TYPE_DIR = 
+			"vnd.android.cursor.dir/vnd.com.bandonleon.markthisspot.provider." + SPOTS_PATH;
+	private static final String MIME_TYPE_ITEM = 
+			"vnd.android.cursor.item/vnd.com.bandonleon.markthisspot.provider." + SPOTS_PATH;
 
 	// Helper constants for use with UriMatcher
-	private static final UriMatcher URI_MATCHER;
 	private static final int URI_SPOTS_DIR = 1;
 	private static final int URI_SPOTS_ITEM = 2;
+	private static final UriMatcher URI_MATCHER;
 	
 	static {
 		URI_MATCHER = new UriMatcher(UriMatcher.NO_MATCH);
 		URI_MATCHER.addURI(AUTHORITY, SPOTS_PATH, URI_SPOTS_DIR);
 		URI_MATCHER.addURI(AUTHORITY, SPOTS_PATH + "/#", URI_SPOTS_ITEM);
 	}
-	
-	// Database related stuff
+
+	// Database name, table name, and version
+    private static final String DATABASE_NAME = "data";
+    private static final String DATABASE_TABLE = "spots";
+    private static final int DATABASE_VERSION = 2;
+
+	// Database column names
     public static final String KEY_ROWID = BaseColumns._ID;
     public static final String KEY_NAME = "name";
     public static final String KEY_TYPE = "type";
@@ -58,17 +68,18 @@ public class SpotsContentProvider extends ContentProvider {
     public static final String KEY_LNG = "lng";
     public static final String KEY_COLOR = "color";
     public static final String KEY_SHOW = "show";
-    
+
+    // Projection for returning all columns on query
 	public static final String[] PROJECTION_ALL = new String[] 
-		{ KEY_ROWID, KEY_NAME, KEY_TYPE, KEY_DESC, KEY_LAT, KEY_LNG, KEY_COLOR, KEY_SHOW };
-    
+		{ KEY_ROWID, KEY_NAME, KEY_TYPE,  KEY_DESC, 
+		  KEY_LAT,   KEY_LNG,  KEY_COLOR, KEY_SHOW };
+  
+	// Debugging tag
     private static final String TAG = "SpotsContentProvider";
+    
+    // Database related member variables
     private DatabaseHelper mDbHelper = null;
     private SQLiteDatabase mDb = null;
-
-    private static final String DATABASE_NAME = "data";
-    private static final String DATABASE_TABLE = "spots";
-    private static final int DATABASE_VERSION = 2;
 
     // Database creation sql statement
     private static final String DATABASE_CREATE =
@@ -82,15 +93,14 @@ public class SpotsContentProvider extends ContentProvider {
         	   KEY_COLOR + " integer not null, " + 
         	   KEY_SHOW + " integer not null);";
 
+    // Database helper class for creating the SQLiteDatabase
     private static class DatabaseHelper extends SQLiteOpenHelper {
-
         DatabaseHelper(Context context) {
             super(context, DATABASE_NAME, null, DATABASE_VERSION);
         }
 
         @Override
         public void onCreate(SQLiteDatabase db) {
-
             db.execSQL(DATABASE_CREATE);
         }
 
@@ -103,10 +113,11 @@ public class SpotsContentProvider extends ContentProvider {
         }
     }
     
+    /*
+     * SpotsContentProvider logic begins here...
+     */
 	@Override
 	public boolean onCreate() {
-		Log.d(TAG, "onCreate()");
-		
 		if (mDbHelper == null) {
 			mDbHelper = new DatabaseHelper(getContext()); 	// (mCtx);
 			if (mDbHelper != null)
@@ -117,21 +128,24 @@ public class SpotsContentProvider extends ContentProvider {
 	}
 	
 	@Override
-	public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
+	public Cursor query(Uri uri, String[] projection, String selection, 
+						String[] selectionArgs, String sortOrder) {
 
 		switch(URI_MATCHER.match(uri)) {
 			case URI_SPOTS_DIR:
-				Log.d(TAG, "query(URI_SPOTS_DIR)");
-				return mDb.query(DATABASE_TABLE, PROJECTION_ALL, selection, selectionArgs, null, null, sortOrder);
+				return mDb.query(DATABASE_TABLE, PROJECTION_ALL, selection,
+								 selectionArgs, null, null, sortOrder);
 				
 			case URI_SPOTS_ITEM:
 				String qualifier = KEY_ROWID + "=" + uri.getLastPathSegment();  // should this be =?
 				// selectionArgs = new String[] { uri.getLastPathSegment() };
-				selection = TextUtils.isEmpty(selection) ? qualifier : qualifier + " AND " + selection; 
+				selection = TextUtils.isEmpty(selection) ? qualifier 
+														 : qualifier + " AND " + selection; 
 				Log.d(TAG, "query(URI_SPOTS_ITEM) " + selection);
 
 				Cursor c = mDb.query(true, DATABASE_TABLE, PROJECTION_ALL, 
-									 selection, selectionArgs, null, null, null, null);
+									 selection, selectionArgs, 
+									 null, null, null, null);
 				if (c != null)
 					c.moveToFirst();
 				return c;
@@ -161,7 +175,8 @@ public class SpotsContentProvider extends ContentProvider {
 	}
 	
 	@Override
-	public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+	public int update(Uri uri, ContentValues values, 
+					  String selection, String[] selectionArgs) {
 		int updateCount = 0;
 		
 		switch(URI_MATCHER.match(uri)) {
@@ -169,8 +184,11 @@ public class SpotsContentProvider extends ContentProvider {
 				break;
 				
 			case URI_SPOTS_ITEM:
-					String qualifier = KEY_ROWID + "=" + uri.getLastPathSegment();
-					selection = TextUtils.isEmpty(selection) ? qualifier : qualifier + " AND " + selection; 
+				// TODO: Should probaby rewrite SQL to be =? and pass 
+				// selectionArgs. This way SQLite can cache the query.
+				String qualifier = KEY_ROWID + "=" + uri.getLastPathSegment();
+				selection = TextUtils.isEmpty(selection) ? qualifier 
+														 : qualifier + " AND " + selection;
 				break;
 				
 			default:
@@ -195,8 +213,9 @@ public class SpotsContentProvider extends ContentProvider {
 				break;
 				
 			case URI_SPOTS_ITEM:
-					String qualifier = KEY_ROWID + "=" + uri.getLastPathSegment();
-					selection = TextUtils.isEmpty(selection) ? qualifier : qualifier + " AND " + selection; 
+				String qualifier = KEY_ROWID + "=" + uri.getLastPathSegment();
+				selection = TextUtils.isEmpty(selection) ? qualifier 
+														 : qualifier + " AND " + selection; 
 				break;
 				
 			default:

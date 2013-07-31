@@ -3,7 +3,6 @@ package com.bandonleon.markthisspot;
 import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -19,7 +18,7 @@ import android.widget.Spinner;
  * 				dombhuphaibool@yahoo.com
  * 
  * Created: 	19 July 2013
- * Modified:	27 July 2013
+ * Modified:	30 July 2013
  *
  * Description:
  * MarkFragment is a fragment that implements all editing UI for the
@@ -28,9 +27,7 @@ import android.widget.Spinner;
  * 
  *****************************************************************************/
 public class MarkFragment extends Fragment implements OnClickListener {
-
-	private static int mID = 0;
-	
+	// UI member variables
 	private EditText mSpotName;
 	private Spinner mSpotType;
 	private EditText mSpotDesc;
@@ -38,12 +35,24 @@ public class MarkFragment extends Fragment implements OnClickListener {
 	private View mLatLngContainer;
 	private EditText mSpotLat;
 	private EditText mSpotLng;
+
+	private Button mDeleteBtn;
 	
+	// This should correspond to the currently selected ListView item's ID.
+	// TODO: We should probably find a way to keep it only in one place so 
+	// there is less chance of it being mismatched. Currently, ListFragment
+	// does not know about DetailsFragment, and vice versa. An option is to
+	// store it in MainActivity as both will know about MainActivity.
 	private long mListIdxId = 0;
-	private String[] mTypeList = {};
 	
+	// An array to help us convert from type array name to array index.
+	// Used for setting the Spinner by index.
+	private String[] mTypeList = {};
+
+	// Provide an interface to notify clients of actions in this fragment.
 	public interface OnSpotEditListener {
 		public void onSaveEdit(long id, LocationInfo loc);
+		public void onDeleteEdit(long id);
 		public void onCancelEdit();
 		public void onLatLngCheck(double lat, double lng);
 	}
@@ -53,16 +62,11 @@ public class MarkFragment extends Fragment implements OnClickListener {
 		mListener = listener;
 	}
 	
-	public MarkFragment() {
-		mID++;
-		Log.w("MarkFragment", "Constructor " + mID);
-	}
+	// public MarkFragment() { Log.w("MarkFragment", "Constructor"); }
 	
 	@Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-//		if (container == null)
-//			return null;
 		
 		View rootView = inflater.inflate(R.layout.spot_mark, container, false);
 
@@ -74,6 +78,8 @@ public class MarkFragment extends Fragment implements OnClickListener {
 		mSpotLat = (EditText) rootView.findViewById(R.id.mark_lat);
 		mSpotLng = (EditText) rootView.findViewById(R.id.mark_lng);
 		
+		mDeleteBtn = (Button) rootView.findViewById(R.id.delete_edit);
+		setOnClickListener(mDeleteBtn);
 		setOnClickListener((Button) rootView.findViewById(R.id.check_latlng));
 		setOnClickListener((Button) rootView.findViewById(R.id.save_edit));
 		setOnClickListener((Button) rootView.findViewById(R.id.cancel_edit));
@@ -100,6 +106,31 @@ public class MarkFragment extends Fragment implements OnClickListener {
         }
     }
 
+    @Override
+    public void onResume() {
+    	super.onResume();
+		if (mDeleteBtn != null)
+			mDeleteBtn.setEnabled(mListIdxId != 0);
+		
+		// At this point, all the UI member variables should be valid!
+		assert(mSpotName != null);
+		assert(mSpotType != null);
+		assert(mSpotDesc != null);
+		assert(mLatLngContainer != null);
+		assert(mSpotLat != null);
+		assert(mSpotLng != null);
+		assert(mDeleteBtn != null);
+    }
+    
+	// TODO: This is a hack for the time being.
+    // TODO: High priority => Fix this hack!
+    private void validateListener() {
+		OnSpotEditListener ac = (OnSpotEditListener) getActivity();
+		if (ac != null) {
+			mListener = ac;
+		}
+    }
+    
     /*
      * Helper method to find the list index of the location type.
      * Return 0 if not found or the appropriate index if found.
@@ -138,6 +169,8 @@ public class MarkFragment extends Fragment implements OnClickListener {
 			mSpotLat.setText(String.valueOf(loc.getLat()));
 		if (mSpotLng != null)
 			mSpotLng.setText(String.valueOf(loc.getLng()));
+		if (mDeleteBtn != null)
+			mDeleteBtn.setEnabled(mListIdxId != 0);
 	}
 	
 	public void updateLatLng(double lat, double lng) {
@@ -162,6 +195,7 @@ public class MarkFragment extends Fragment implements OnClickListener {
 		switch (view.getId()) {
 			case R.id.check_latlng: onCheckLatLngClicked(view); 	break;
 			case R.id.save_edit:	onSaveEditClicked(view);		break;
+			case R.id.delete_edit:	onDeleteEditClicked(view);		break;
 			case R.id.cancel_edit:	onCancelEditClicked(view);		break;
 		}
 	}
@@ -170,14 +204,7 @@ public class MarkFragment extends Fragment implements OnClickListener {
 	 * Button callbacks
 	 */
 	public void onCheckLatLngClicked(View view) {
-		// TODO: Fix this hack!
-		// We should really route this to MapFragment in DetailsFragment code.
-		// MapFragment is the one who wants to know about this event.
-		OnSpotEditListener ac = (OnSpotEditListener) getActivity();
-		if (ac != null) {
-			// TODO: For now hack it
-			mListener = ac;
-		}
+		validateListener();
 
 		if (mListener != null) {
 			double lat = 0.0;
@@ -195,12 +222,7 @@ public class MarkFragment extends Fragment implements OnClickListener {
 	}
 	
 	public void onSaveEditClicked(View view) {
-		// TODO: Fix this hack!
-		OnSpotEditListener ac = (OnSpotEditListener) getActivity();
-		if (ac != null) {
-			// TODO: For now hack it
-			mListener = ac;
-		}
+		validateListener();
 		if (mListener != null) {
 			LocationInfo loc = new LocationInfo();
 			loc.setName(mSpotName.getText().toString());
@@ -215,14 +237,20 @@ public class MarkFragment extends Fragment implements OnClickListener {
 			mListener.onSaveEdit(mListIdxId, loc);
 		}
 	}
+
+	public void onDeleteEditClicked(View view) {
+		if (mListIdxId != 0) {
+			validateListener();
+			
+			if (mListener != null) {
+				mListener.onDeleteEdit(mListIdxId);
+			}		
+		}
+	}
 	
 	public void onCancelEditClicked(View view) {
-		// TODO: Fix this hack!
-		OnSpotEditListener ac = (OnSpotEditListener) getActivity();
-		if (ac != null) {
-			// TODO: For now hack it
-			mListener = ac;
-		}
+		validateListener();
+		
 		if (mListener != null) {
 			mListener.onCancelEdit();
 		}
