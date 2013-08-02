@@ -214,16 +214,28 @@ public class DetailsFragment extends Fragment
      *  and populate the info accordingly.
      */
     public void updateInfo(long id) {
-    	if (id == 0) {
+    	// id of 0 means we don't have anything selected in the ListView.
+    	// 		=> SpotsContentProvider.NEW_LOC_ID
+    	// id of 1 means we have the 'Current Location' selected.
+    	//		=> SpotsContentProvider.CURR_LOC_ID
+    	// In either of these cases, do not populate the UI fields, 
+    	// and update the latitude and longitude to be our current location.
+    	if (id <= SpotsContentProvider.CURR_LOC_ID) {
     		// Only clear the UI info if it was previously populated by a 
     		// valid location. If we are currently in new location context
-    		// mListIdxId == 0, don't repopulate the UI. Use case is when 
+    		// mListIdxId == 0, don't re-populate the UI. Use case is when 
     		// the user is moving the map around to find the new location point.
-    		if (id != mListIdxId) {
+    		if (id == SpotsContentProvider.CURR_LOC_ID || id != mListIdxId) {
     			mListIdxId = id;
 	    		mLoc = (mMapFragment != null) ? 
-	    				mMapFragment.getCurrMapLocation() : new LocationInfo();
+	    			   ((id == SpotsContentProvider.CURR_LOC_ID) ?
+	    					   mMapFragment.getCurrLocation() : 
+	    					   mMapFragment.getCurrMapLocation()) 
+	    		       : new LocationInfo();
 	    		updateUI();
+	    		
+	        	if (mMapFragment != null)
+	        		mMapFragment.animateCamera(mLoc.getLat(), mLoc.getLng());
     		}
     		return;
     	}

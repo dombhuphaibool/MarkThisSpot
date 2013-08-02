@@ -59,7 +59,7 @@ public class MainActivity extends FragmentActivity
 	// the Landscape orientation).
     ViewMode mViewMode;
     ViewMode mLastSinglePaneMode;
-    long mCurrSelectedId = 0;
+    long mCurrSelectedId = SpotsContentProvider.NEW_LOC_ID;
 
     // UI member variables. These should all be vaild for out activity to
     // run correctly.
@@ -124,7 +124,8 @@ public class MainActivity extends FragmentActivity
 
         if (savedInstanceState != null) {
             // Restore last state for checked position.
-            mCurrSelectedId = savedInstanceState.getLong(CURR_SELID, 0);
+            mCurrSelectedId = savedInstanceState.getLong(CURR_SELID, 
+            								SpotsContentProvider.NEW_LOC_ID);
             mLastSinglePaneMode = (ViewMode) savedInstanceState.getSerializable(LAST_SP_MODE);
             // If we are in single pane mode, restore to the last single pane mode
             if (mViewMode != ViewMode.DualPane)
@@ -217,11 +218,18 @@ public class MainActivity extends FragmentActivity
 		// updateCurrentLocation() gets called from 
 		// DetailsFragment.onMapConnected(). If the 'Current Location', 
 		// item index 1 does not yet exist in the database 
-		// (eg, first installation), it will get created. In this case,
-		// we need to refresh the ListFragment's ListView to show the
-		// new location.
+		// (eg, first installation), it will get created,
+		// (in the call to saveLocation()). In this case,
+		// we need to refresh the ListFragment's ListView to
+		// show the new location.
 		if (mSpotsFragment != null)
 			mSpotsFragment.reloadListView();
+		
+		if (mCurrSelectedId == SpotsContentProvider.NEW_LOC_ID) {
+			// TODO: We need to also set the ListFragment's ListView
+			// selection here...
+			mCurrSelectedId = SpotsContentProvider.CURR_LOC_ID;
+		}
 	}
 	
 	/*
@@ -354,12 +362,15 @@ public class MainActivity extends FragmentActivity
 				// Toast.makeText(this, "Mark this spot!", Toast.LENGTH_SHORT).show();
 				// Intent markIntent = new Intent(this, MarkActivity.class);
 				// startActivityForResult(markIntent, ACTIVITY_MARK);
+				if (mViewMode == ViewMode.List)
+					setSinglePaneMode(ViewMode.Details);
+				
 				if (mDetailsFragment != null) {
 					mDetailsFragment.updateInfo(mCurrSelectedId);
 					setDetailsFragmentMode(Mode.Edit);
 					
 					// Create a marker for the new location
-					if (mCurrSelectedId == 0) {
+					if (mCurrSelectedId == SpotsContentProvider.NEW_LOC_ID) {
 						MapFragment mapFragment = mDetailsFragment.getMapFragment();
 						if (mapFragment != null)
 							mapFragment.addTmpMarker();
@@ -367,6 +378,23 @@ public class MainActivity extends FragmentActivity
 				}
 				return true;
 			
+			// TODO: Implement getting driving/walking directions...
+			/*
+			case R.id.directions:
+				Intent intent = new Intent(android.content.Intent.ACTION_VIEW,
+					Uri.parse("http://maps.google.com/maps?saddr=" + 
+							  String.valueOf(src_loc.getLatitude()) + "," +
+							  String.valueOf(src_loc.getLongitude()) +
+							  "&daddr=" + String.valueOf(dest_loc.getLatitude()) + 
+							  String.valueOf(dest_loc.getLongitude())));
+				intent.setClassName("com.google.android.apps.maps", "com.google.android.apps.MapsActivity");
+				startActivity(intent);
+				
+				// Without src address...
+				Intent intent = new Intent(android.content.Intent.ACTION_VIEW,
+					Uri.parse("geo:0,0?q=" + String.valueOf(loc.getLatitude()) + 
+					"," + String.valueOf(loc.getLongitude()) + " (" + marker_name + ")"));
+			 */
 			case R.id.action_settings:
 				// Toast.makeText(this, "Show Settings", Toast.LENGTH_SHORT).show();
 				Intent settingsIntent = new Intent(this, SettingsActivity.class);
@@ -404,6 +432,14 @@ public class MainActivity extends FragmentActivity
      * MarkFragment.OnSpotEditListener callbacks
      */
 	public void onSaveEdit(long id, LocationInfo loc) {
+		// Do not allow users to update the 'Current Location' item,
+		// Instead, create a new location for them. This is because the
+		// user's current location can always change and therefore we 
+		// need to always have an entry in the ListView as the 
+		// 'Current Location'.
+		if (id == SpotsContentProvider.CURR_LOC_ID)
+			id = SpotsContentProvider.NEW_LOC_ID;
+		
 		loc.validateName();
 		long savedId = saveLocation(id, loc, true);
 		// TODO:
@@ -426,7 +462,7 @@ public class MainActivity extends FragmentActivity
 		if (mDetailsFragment != null) {
 			MapFragment mapFragment = mDetailsFragment.getMapFragment();
 			if (mapFragment != null) {
-				if (id != 0) {
+				if (id != SpotsContentProvider.NEW_LOC_ID) {
 					mapFragment.updateMarker(id, loc);				
 				} else if (mCurrSelectedId > 0) { 
 					// (id == 0 && mCurrSelectedId > 0)
@@ -486,7 +522,8 @@ public class MainActivity extends FragmentActivity
 	public void onCameraChange(double lat, double lng) {
 		if (!mIgnoreCamChange && mSpotsFragment != null) {
 			// Hide the previous marker info window if it's showing
-			if (mDetailsFragment != null && mCurrSelectedId != 0) {
+			if (mDetailsFragment != null && 
+				mCurrSelectedId != SpotsContentProvider.NEW_LOC_ID) {
 				MapFragment mapFragment = mDetailsFragment.getMapFragment();
 				if (mapFragment != null) {
 					mapFragment.activateMarker(mCurrSelectedId, false);
@@ -499,7 +536,7 @@ public class MainActivity extends FragmentActivity
 			
 			// Clear the List fragment's ListView
 			mSpotsFragment.clearCurrListSelection();
-			mCurrSelectedId = 0;
+			mCurrSelectedId = SpotsContentProvider.NEW_LOC_ID;
 
 			// Clear the Detail fragment
 			if (mDetailsFragment != null && mDetailsFragment.isVisible()) {

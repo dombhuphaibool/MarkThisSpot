@@ -11,7 +11,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
-import android.util.Log;
+// import android.util.Log;
 
 /******************************************************************************
  * 
@@ -73,9 +73,18 @@ public class SpotsContentProvider extends ContentProvider {
 	public static final String[] PROJECTION_ALL = new String[] 
 		{ KEY_ROWID, KEY_NAME, KEY_TYPE,  KEY_DESC, 
 		  KEY_LAT,   KEY_LNG,  KEY_COLOR, KEY_SHOW };
-  
+
+	// Note: Row ID of 0 is invalid so we use this to refer to a new location.
+	// Note: Row ID of 1 refers to the 'Current Location' item. Currently it
+	// is up to the owner of the SpotsContentProvider to ensure that they add
+	// as the first item in the database, the 'Current Location' item. 
+	// TODO: Modify this logic so we add it ourselves upon the creation of the
+	// database. This way we ensure that the ID is always valid.
+	public static final int NEW_LOC_ID = 0;
+	public static final int CURR_LOC_ID = 1;
+	
 	// Debugging tag
-    private static final String TAG = "SpotsContentProvider";
+    // private static final String TAG = "SpotsContentProvider";
     
     // Database related member variables
     private DatabaseHelper mDbHelper = null;
@@ -102,12 +111,15 @@ public class SpotsContentProvider extends ContentProvider {
         @Override
         public void onCreate(SQLiteDatabase db) {
             db.execSQL(DATABASE_CREATE);
+            // TODO: Exec an SQL statement to insert as the first item,
+            // 'Current Location' to ensure that ROW ID 1 refers to this...
+            // db.execSQL(INSERT_CURR_LOC);
         }
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-            Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
-                    + newVersion + ", which will destroy all old data");
+            // Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
+            //        + newVersion + ", which will destroy all old data");
             db.execSQL("DROP TABLE IF EXISTS spots");
             onCreate(db);
         }
@@ -141,7 +153,7 @@ public class SpotsContentProvider extends ContentProvider {
 				// selectionArgs = new String[] { uri.getLastPathSegment() };
 				selection = TextUtils.isEmpty(selection) ? qualifier 
 														 : qualifier + " AND " + selection; 
-				Log.d(TAG, "query(URI_SPOTS_ITEM) " + selection);
+				// Log.d(TAG, "query(URI_SPOTS_ITEM) " + selection);
 
 				Cursor c = mDb.query(true, DATABASE_TABLE, PROJECTION_ALL, 
 									 selection, selectionArgs, 
@@ -151,7 +163,7 @@ public class SpotsContentProvider extends ContentProvider {
 				return c;
 				
 			default:
-				Log.e(TAG, "Unsupported URI in query() : " + uri);				
+				// Log.e(TAG, "Unsupported URI in query() : " + uri);				
 				throw new IllegalArgumentException("Unsupported URI: " + uri);
 		}		
 	}
@@ -159,7 +171,7 @@ public class SpotsContentProvider extends ContentProvider {
 	@Override
 	public Uri insert(Uri uri, ContentValues values) {
 		if (URI_MATCHER.match(uri) != URI_SPOTS_DIR) {
-			Log.e(TAG, "Unsupported URI in insert() : " + uri);							
+			// Log.e(TAG, "Unsupported URI in insert() : " + uri);							
 			throw new IllegalArgumentException("Unsupported URI: " + uri);
 		}
 		
@@ -170,7 +182,7 @@ public class SpotsContentProvider extends ContentProvider {
 			return itemUri;
 		}
 			
-		Log.e(TAG, "Could not insert() with URI : " + uri);
+		// Log.e(TAG, "Could not insert() with URI : " + uri);
 		return null;
 	}
 	
@@ -192,7 +204,7 @@ public class SpotsContentProvider extends ContentProvider {
 				break;
 				
 			default:
-				Log.e(TAG, "Unsupported URI in update() : " + uri);				
+				// Log.e(TAG, "Unsupported URI in update() : " + uri);				
 				throw new IllegalArgumentException("Unsupported URI: " + uri);
 		}
 		
@@ -219,7 +231,7 @@ public class SpotsContentProvider extends ContentProvider {
 				break;
 				
 			default:
-				Log.e(TAG, "Unsupported URI in delete() : " + uri);				
+				// Log.e(TAG, "Unsupported URI in delete() : " + uri);				
 				throw new IllegalArgumentException("Unsupported URI: " + uri);
 		}
 		
@@ -239,7 +251,7 @@ public class SpotsContentProvider extends ContentProvider {
 			case URI_SPOTS_ITEM:
 				return MIME_TYPE_ITEM;
 			default:
-				Log.e(TAG, "Unsupported URI getType() : " + uri);
+				// Log.e(TAG, "Unsupported URI getType() : " + uri);
 				throw new IllegalArgumentException("Unsupported URI: " + uri);
 		}
 	}
